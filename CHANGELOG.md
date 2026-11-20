@@ -10,7 +10,7 @@ Este archivo es la fuente de verdad legible por humanos del historial de version
 
 Sin cambios pendientes de publicar.
 
-## [0.1.0] - Sin publicar
+## [0.1.0] - 2026-11-19
 
 Primera versión de vista previa (preview). Validada desde un proyecto externo limpio, tanto en instalación nueva como en actualización desde una versión anterior (`tools/consumer-e2e`). La superficie pública aún puede cambiar mientras la versión sea `0.y.z`. Licencia MIT.
 

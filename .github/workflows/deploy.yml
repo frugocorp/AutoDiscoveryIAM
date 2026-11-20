@@ -36,8 +36,8 @@ jobs:
     outputs:
       stacks: ${{ github.event_name == 'workflow_dispatch' && '["app/web"]' || steps.filtro.outputs.changes }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
         id: filtro
         with:
           filters: |
@@ -55,7 +55,7 @@ jobs:
       matrix:
         stack: ${{ fromJson(needs.detectar-cambios.outputs.stacks) }}
     steps:
-      - uses: webfactory/ssh-agent@v0.9.0
+      - uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 

@@ -1,6 +1,6 @@
 # AutoDiscoveryIAM
 
-![AutoDiscoveryIAM](https://autodiscoveryiam.frugocorp.com/images/FrugoCorp-Logo-300x300.jpg)
+![AutoDiscoveryIAM](https://raw.githubusercontent.com/frugocorp/AutoDiscoveryIAM/main/docs/site/AutoDiscoveryIAM/public/images/FrugoCorp-Logo-300x300.jpg)
 
 [![nuget](https://img.shields.io/nuget/v/FrugoCorp.AspNetCore.AutoDiscoveryIAM)](https://www.nuget.org/packages/FrugoCorp.AspNetCore.AutoDiscoveryIAM)
 

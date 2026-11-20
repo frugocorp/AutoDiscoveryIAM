@@ -2,7 +2,7 @@
 <!-- autodiscoveryiam:doc_header_start -->
 # AutoDiscoveryIAM
 
-![AutoDiscoveryIAM](docs/site/AutoDiscoveryIAM/public/images/FrugoCorp-Logo-300x300.jpg)
+![AutoDiscoveryIAM](https://raw.githubusercontent.com/frugocorp/AutoDiscoveryIAM/main/docs/site/AutoDiscoveryIAM/public/images/FrugoCorp-Logo-300x300.jpg)
 
 [![nuget](https://img.shields.io/nuget/v/FrugoCorp.AspNetCore.AutoDiscoveryIAM)](https://www.nuget.org/packages/FrugoCorp.AspNetCore.AutoDiscoveryIAM)
 <!-- autodiscoveryiam:doc_header_end -->
@@ -2615,6 +2615,7 @@ src/app/
 **Cuándo crear un bounded context nuevo vs. un feature slice nuevo dentro de uno existente**: un bounded context nuevo es cuando el dominio tiene su propio lenguaje/modelo que no comparte con los demás (ej. "Facturación" y "Catálogo de productos" casi nunca coinciden en qué significa "item" — uno lo ve como una línea de cobro, el otro como un producto con inventario); un feature slice nuevo es cuando ya estás dentro del mismo dominio, solo agregando otro caso de uso al mismo lenguaje/modelo. La pregunta práctica: si dos partes del sitio necesitaran modelos de datos incompatibles para lo que a simple vista "suena igual", son bounded contexts distintos, no dos features del mismo.
 <!-- autodiscoveryiam:doc_body_end -->
 <!-- autodiscoveryiam:doc_end -->
+
 
 
 

@@ -12,7 +12,9 @@ import type { ConverterConfig } from '@ngx-docs-markdown-kit/parser-md-converter
 // mas idiomas).
 export const CONVERTER_CONFIG = {
   title: 'AutoDiscoveryIAM',
-  logo: '/images/FrugoCorp-Logo-300x300.jpg',
+  // URL absoluta a raw.githubusercontent.com a proposito: NuGet.org solo muestra imagenes de
+  // dominios de su lista permitida, y una ruta relativa se convertiria en una URL del sitio propio.
+  logo: 'https://raw.githubusercontent.com/frugocorp/AutoDiscoveryIAM/main/docs/site/AutoDiscoveryIAM/public/images/FrugoCorp-Logo-300x300.jpg',
   // URL real del sitio -- null (default) cae a buscar "homepage" en el package.json de algun nivel
   // (lo normal si tu proyecto SI es un paquete de npm). Seteala a mano si tu proyecto no tiene
   // ningun package.json en "levels" (ej. una libreria .NET/NuGet) -- ver docs de parser-md-converter.

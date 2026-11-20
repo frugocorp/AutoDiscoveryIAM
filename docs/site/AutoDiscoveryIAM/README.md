@@ -95,7 +95,7 @@ Cambiar un valor requiere editar el archivo y recompilar.
 <!-- autodiscoveryiam:doc_header_start -->
 # AutoDiscoveryIAM
 
-![AutoDiscoveryIAM](public/images/FrugoCorp-Logo-300x300.jpg)
+![AutoDiscoveryIAM](https://raw.githubusercontent.com/frugocorp/AutoDiscoveryIAM/main/docs/site/AutoDiscoveryIAM/public/images/FrugoCorp-Logo-300x300.jpg)
 
 [![nuget](https://img.shields.io/nuget/v/FrugoCorp.AspNetCore.AutoDiscoveryIAM)](https://www.nuget.org/packages/FrugoCorp.AspNetCore.AutoDiscoveryIAM)
 <!-- autodiscoveryiam:doc_header_end -->

@@ -1,0 +1,31 @@
+services:
+  app-web:
+    build:
+      context: ${APP_BUILD_CONTEXT}
+      dockerfile: ${APP_DOCKERFILE_PATH}
+      target: dev
+      # Mismo motivo que en docker-compose.yml -- ver ese comentario.
+      additional_contexts:
+        npmfeed: ${APP_NPM_FEED_PATH}
+      args:
+        - APP_PORT_CONTAINER=${APP_PORT_CONTAINER}
+        - PROJECT_PATH=${APP_PROJECT_PATH}
+        - PROJECT_NAME=${APP_PROJECT_NAME}
+        - APP_ALLOWED_HOSTS=${APP_ALLOWED_HOSTS}
+        # Solo la etapa "dev" del Dockerfile la necesita (COPY de dev-entrypoint.sh) -- por eso
+        # vive aqui y no en el docker-compose.yml base (etapa "final", que no la usa).
+        - APP_DEV_ENTRYPOINT_PATH=${APP_DEV_ENTRYPOINT_PATH}
+    volumes:
+      # Monta el codigo fuente local para desarrollo interactivo, para que "ng serve" reaccione a
+      # cambios (equivalente a "dotnet watch" en docker/api). Ruta destino absoluta -- coincide con
+      # el WORKDIR de la etapa "dev" del Dockerfile. Concatena APP_BUILD_CONTEXT + APP_PROJECT_PATH
+      # (ambos en .env) para no repetir la ruta del proyecto una tercera vez.
+      - ${APP_BUILD_CONTEXT}${APP_PROJECT_PATH}:/src/${APP_PROJECT_PATH}
+      # Aisla node_modules y dist para que los installs/builds del contenedor NO toquen tus
+      # artefactos locales (mismo motivo que aislar bin/obj en docker/api) -- especialmente
+      # importante aqui porque node_modules suele diferir entre el host (Windows) y el contenedor
+      # (Linux) para paquetes con binarios nativos.
+      - /src/${APP_PROJECT_PATH}/node_modules
+      - /src/${APP_PROJECT_PATH}/dist
+      - /src/${APP_PROJECT_PATH}/.angular
+    working_dir: /src/${APP_PROJECT_PATH}

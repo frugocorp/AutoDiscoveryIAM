@@ -1,0 +1,8 @@
+<Project>
+  <!-- Corta la herencia del Directory.Build.props de la raíz: MiApi simula una app ajena, sin los
+       analizadores ni TreatWarningsAsErrors de la librería. AdiamVersion es la versión del paquete
+       que se prueba; cámbiala aquí (o pasa -p:AdiamVersion=...) antes de restaurar. -->
+  <PropertyGroup>
+    <AdiamVersion Condition="'$(AdiamVersion)' == ''">0.1.0</AdiamVersion>
+  </PropertyGroup>
+</Project>

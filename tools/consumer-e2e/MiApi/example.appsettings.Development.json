@@ -1,0 +1,10 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=<host>,<puerto>;Initial Catalog=miapi_e2e;User ID=<usuario>;Password=<contraseña>;Encrypt=False;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "Key": "<al menos 64 caracteres aleatorios>",
+    "Issuer": "MiApi",
+    "Audience": "MiApi"
+  }
+}

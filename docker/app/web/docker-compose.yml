@@ -1,0 +1,66 @@
+# Nombre de proyecto de Compose explicito -- mismo valor que container_name (ver abajo), a proposito.
+# Sin esto, Compose deriva el nombre del proyecto del nombre de la carpeta actual: al haber un
+# contenedor por sitio, todos con la misma clave de servicio "app-web", "docker compose ps"/
+# "docker ps" muestra una lista plana e indistinguible sin esto. Con esto, cada sitio queda
+# agrupado bajo su propio nombre de proyecto real.
+name: ${APP_CONTAINER_NAME}
+
+services:
+  # Clave de servicio generica ("app-web", no "adiam-app-web") -- la identidad real del contenedor
+  # (lo que nginx/otros stacks usan para alcanzarlo por la red compartida) ya no depende de esta
+  # clave ni del nombre de la carpeta: la fija "container_name" de forma explicita, ver abajo.
+  app-web:
+    build:
+      # Raiz del repo, relativa a esta carpeta docker/app/web -- ajusta en .env
+      # (APP_BUILD_CONTEXT) si copias esta carpeta a otro proyecto con distinta profundidad.
+      context: ${APP_BUILD_CONTEXT}
+      # Ruta del Dockerfile relativa al contexto de arriba (no a esta carpeta) -- ver
+      # APP_DOCKERFILE_PATH en .env. El Dockerfile en si es generico (no conoce el nombre del
+      # proyecto Angular en particular): recibe PROJECT_PATH/PROJECT_NAME como build args, abajo.
+      dockerfile: ${APP_DOCKERFILE_PATH}
+      # Explicito a proposito -- mismo motivo que en docker/api: sin esto, Docker usa la ultima
+      # etapa textual del Dockerfile como destino implicito ("dev", no "final") si este archivo se
+      # usa solo, sin el override de desarrollo.
+      target: final
+      # Feed local de npm (ver APP_NPM_FEED_PATH en .env) -- monta esa carpeta del host como
+      # contexto adicional de build ("npmfeed" en el Dockerfile), mismo patron que
+      # additional_contexts/nugetfeed en docker/api de AutoDiscoveryIAM.
+      additional_contexts:
+        npmfeed: ${APP_NPM_FEED_PATH}
+      args:
+        - APP_PORT_CONTAINER=${APP_PORT_CONTAINER}
+        # Ruta y nombre del proyecto Angular a construir (ver APP_PROJECT_PATH/APP_PROJECT_NAME en
+        # .env) -- el Dockerfile los reutiliza para "dist/<PROJECT_NAME>" y los directorios de
+        # trabajo, sin tener el nombre del proyecto hardcodeado en ningun lado.
+        - PROJECT_PATH=${APP_PROJECT_PATH}
+        - PROJECT_NAME=${APP_PROJECT_NAME}
+        - APP_ALLOWED_HOSTS=${APP_ALLOWED_HOSTS}
+        # "static" (SSG, sin Node en runtime) o "server" (SSR completo) -- ver APP_RENDER_MODE en
+        # .env y el ARG global al principio del Dockerfile. DEBE coincidir con el "outputMode" real
+        # que angular.json de este sitio ya tiene (lo fija scaffold.ts al generar/regenerar el
+        # sitio) -- este build arg no cambia esa config, solo elige como se SIRVE el resultado.
+        - RENDER_MODE=${APP_RENDER_MODE}
+        # Solo se usa (se copia) cuando RENDER_MODE=static -- ver APP_NGINX_STATIC_CONF_PATH en
+        # .env, mismo motivo/patron que APP_DEV_ENTRYPOINT_PATH.
+        - APP_NGINX_STATIC_CONF_PATH=${APP_NGINX_STATIC_CONF_PATH}
+    # Nombre real del contenedor en la red compartida -- explicito via .env (APP_CONTAINER_NAME) en
+    # vez de dejar que Docker lo derive del nombre de la carpeta/clave de servicio (ese derivado
+    # cambia si renombras la carpeta, rompiendo silenciosamente a quien le apunte por nombre, ej.
+    # nginx). Cualquier stack que necesite alcanzar este contenedor (ver nginx-server-docker, repo aparte) debe usar
+    # este mismo valor, no la clave de servicio de arriba.
+    container_name: ${APP_CONTAINER_NAME}
+    # Sin "ports:" a proposito -- mismo motivo que docker/api/docker-compose.yml: este contenedor no
+    # publica ningun puerto al host, la unica forma de llegar a el es por la red compartida de
+    # Docker (nombre + puerto interno), igual que nginx -- cero excepciones, ni siquiera desde el
+    # propio host.
+    networks:
+      - edge-net
+
+networks:
+  edge-net:
+    # "external: true" -- esta red la crea nginx-server-docker (proxy reverso compartido de TODO el
+    # servidor, repo aparte, ver https://github.com/frugocorp/nginx-server-docker), nunca este
+    # stack. Sin esto, Compose intentaria crear su propia red "edge-net" en vez de fallar con un
+    # error claro si nginx-server-docker todavia no esta levantado.
+    external: true
+    name: edge-net

@@ -1,0 +1,4 @@
+# Se pueden usar patrones glob [glob patterns](.github/docs/conventions/glob-patterns.md) y excepciones con '!'
+appsettings.*
+# La plantilla no tiene secretos (solo marcadores {{...}}) y documenta todas las secciones.
+!appsettings.template.json

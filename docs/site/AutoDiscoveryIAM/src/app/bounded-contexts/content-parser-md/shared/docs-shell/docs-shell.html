@@ -1,0 +1,320 @@
+<mat-sidenav-container class="h-full">
+  <mat-sidenav
+    #drawer
+    class="sidebar-secondary border-r border-[var(--color-border)] bg-[var(--color-surface)]"
+    [class.collapsed]="!isMobile() && bar.collapsed()"
+    [mode]="sidenavMode()"
+    [opened]="showSecondaryBar() && sidenavOpened()"
+    [fixedInViewport]="isMobile()"
+    aria-label="Paginas de {{ activeSection()?.label }}"
+  >
+    @if (isMobile() || !bar.collapsed()) {
+      <div class="h-full overflow-y-auto p-6">
+        @if (!isMobile()) {
+          <button
+            type="button"
+            class="sticky top-0 z-10 mb-3 flex h-6 w-6 items-center justify-center rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+            (click)="bar.toggle()"
+            aria-label="Ocultar barra de paginas"
+          >
+            <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+          </button>
+        }
+
+        @if (activeSection(); as section) {
+          <a
+            [routerLink]="['/', section.key]"
+            class="mb-5 block text-[0.95rem] font-bold tracking-wide text-[var(--color-ink)] uppercase no-underline hover:text-[var(--color-primary)]"
+          >
+            {{ section.label }}
+          </a>
+        }
+
+        <!-- Arbol de grupos/subgrupos calculado por navTreeForSection() (ver nav-bar-group.ts) --
+             recorre TODO el manifiesto de la seccion activa, nada hardcodeado por nombre. -->
+        <app-nav-tree [items]="navTree().items" [groups]="navTree().groups" (navigate)="isMobile() && drawer.close()" />
+      </div>
+    } @else {
+      <div class="flex h-full justify-center pt-3">
+        <button
+          type="button"
+          class="flex h-6 w-6 items-center justify-center rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+          (click)="bar.toggle()"
+          aria-label="Mostrar barra de paginas"
+        >
+          <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+        </button>
+      </div>
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content class="bg-[var(--color-bg)]">
+    <div class="flex h-full flex-col overflow-hidden">
+      @if (showSecondaryBar() && isMobile()) {
+        <header class="flex h-11 flex-none items-center gap-2 border-b border-[var(--color-border)] px-3">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded text-[var(--color-ink)]"
+            (click)="drawer.toggle()"
+            aria-label="Abrir menu de paginas"
+          >
+            <span class="material-symbols-outlined">menu</span>
+          </button>
+          <span class="text-sm font-semibold text-[var(--color-ink)]">{{ activeSection()?.label }}</span>
+        </header>
+      }
+
+      <!-- content-row: fila con 2 columnas independientes, ambas de la MISMA altura (items-stretch)
+           -- la columna izquierda (miga de pan + .content-canvas + footer) y <aside> (barra 3, "En
+           esta pagina"). La miga de pan y el footer viven DENTRO de la columna izquierda (hermanos
+           de .content-canvas, no adentro de el) para quedar acotados exactamente al ancho del
+           contenido -- nunca bajo barra 1/2 ni bajo barra 3. La columna izquierda es flex-col con
+           flex-1 en .content-canvas (UNICO ancestro con scroll real) y la miga de pan/footer con su
+           alto natural arriba/abajo, fijos, sin scroll propio -- el alto TOTAL de la columna sigue
+           igualando al de <aside> via items-stretch en la fila. -->
+      <div class="flex min-h-0 flex-1 items-stretch">
+        <!-- "min-w-0" es obligatorio, no cosmetico: el default de un flex item es
+             "min-width: auto", que para un item con overflow visible se resuelve al ancho
+             MINIMO de su contenido (ej. la linea mas larga de un <pre>/<code>, o un <table>
+             ancho) -- sin esto, esta columna (y .content-canvas/doc-content adentro) nunca
+             encoge por debajo de ese piso, aunque el viewport siga achicandose, empujando la
+             barra 3 fuera de pantalla MUCHO antes del breakpoint movil real (900px). Bug real
+             encontrado asi: el piso quedaba en 839.16px de ancho, no en ningun valor de CSS. -->
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+          <app-site-header />
+
+          <!-- Miga de pan -- fila real, fuera de .content-canvas, nunca superpuesta al scroll. Cada
+               nivel es un link real (su propio "content_dir.md"), salvo el ultimo (la pagina
+               actual). -->
+          @if (breadcrumb().length > 0) {
+            <nav
+              class="flex flex-none flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-10 py-3 text-[0.78rem] text-[var(--color-ink-muted)] max-[1100px]:px-6"
+              aria-label="Miga de pan"
+            >
+              @for (step of breadcrumb(); track step.path.join('/'); let last = $last) {
+                @if (!last) {
+                  <a [routerLink]="['/', ...step.path]" class="hover:text-[var(--color-ink)]">{{ step.title }}</a>
+                  <span aria-hidden="true">/</span>
+                } @else {
+                  <span class="text-[var(--color-ink)]">{{ step.title }}</span>
+                }
+              }
+            </nav>
+          }
+
+          <!-- content-canvas: el ancestro con scroll real que ScrollSpyDirective busca
+               (host.closest('.content-canvas')) para medir su geometria. -->
+          <div class="content-canvas min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <router-outlet />
+          </div>
+
+          <app-site-footer />
+        </div>
+
+        @if (showOnThisPage()) {
+        <aside
+          class="on-this-page max-[900px]:hidden flex-none self-stretch overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)]"
+          [class.collapsed]="onThisPage.bar.collapsed()"
+          aria-label="En esta pagina"
+        >
+          @if (!onThisPage.bar.collapsed()) {
+            <div class="py-8 pr-8 pl-4">
+              <div class="mb-3 flex items-center justify-between">
+                <p class="text-[0.95rem] font-bold tracking-wide text-[var(--color-ink)] uppercase">En esta pagina</p>
+                <button
+                  type="button"
+                  class="flex h-6 w-6 flex-none items-center justify-center rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                  (click)="onThisPage.bar.toggle()"
+                  aria-label="Ocultar panel En esta pagina"
+                >
+                  <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+              </div>
+
+              <!-- Arbol de jerarquia por indentacion (no contenedores anidados) -- la barra 3 ya
+                   puede estar visible con 0 o 1 encabezados solos (ver showOnThisPage(), activada
+                   tambien por un bloque de codigo o una variable), por eso el @if: sin el, esta
+                   lista se dibujaria vacia en esos casos. La sangria es relativa al nivel MINIMO
+                   presente en la pagina (headingIndentPx), no al numero de "#" absoluto -- una
+                   pagina que arranca en ### no queda con sangria inicial desperdiciada. -->
+              @if (onThisPage.headings().length > 0) {
+              <ul class="m-0 flex list-none flex-col gap-1.5 p-0">
+                @for (heading of onThisPage.headings(); track heading.id) {
+                  <li [style.padding-left.px]="headingIndentPx(heading.level)">
+                    <!-- El color/borde activo e inactivo van SIEMPRE en la misma rama del ternario
+                         (nunca como estaticos + [class] superpuestos) -- con ambos coexistiendo en
+                         el DOM, cual "gana" dependia del orden en que Tailwind compilo esas 2
+                         utilidades (arbitrario, no garantizado), y en la practica siempre ganaba la
+                         version inactiva/muted -- el resaltado del heading activo nunca se pintaba. -->
+                    <a
+                      class="block py-0.5 pl-2 text-[0.85rem] no-underline"
+                      [class]="
+                        heading.id === onThisPage.activeHeadingId()
+                          ? 'border-l-2 border-[var(--color-primary)] text-[var(--color-ink)]'
+                          : 'border-l-2 border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+                      "
+                      [href]="'#' + heading.id"
+                      (click)="onThisPage.jumpToHeading($event, heading.id)"
+                    >
+                      {{ stripInlineCode(heading.text) }}
+                    </a>
+                  </li>
+                }
+              </ul>
+              }
+
+              <!-- Panel dinamico de variables (ver SiteVariablesService/ContentService.applySiteVars) -- se
+                   autodescubre por pagina, sin ningun flag de DESIGN_CONFIG que prender/apagar: si esta
+                   pagina no usa ninguna "(--CLAVE--)", el bloque entero no se renderiza. -->
+              @if (hasSiteVariables()) {
+                <div class="mt-6 border-t border-[var(--color-border)] pt-4">
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <p class="text-[0.8rem] font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase">Mis Variables</p>
+                    <button
+                      type="button"
+                      class="text-[0.78rem] text-[var(--color-ink-muted)] underline hover:text-[var(--color-ink)]"
+                      (click)="clearAllSiteVariables()"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+
+                  <div class="mb-3 flex items-center justify-between gap-2">
+                    <span class="text-[0.75rem] text-[var(--color-ink-muted)]">Mostrar todas</span>
+                    <mat-slide-toggle
+                      [checked]="showAllSiteVariables()"
+                      (change)="setShowAllSiteVariables($any($event).checked)"
+                      aria-label="Mostrar las variables de todo el sitio, no solo las de esta pagina"
+                    />
+                  </div>
+
+                  <p class="mb-2 text-[0.7rem] font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase">
+                    {{ showAllSiteVariables() ? 'Variables de todo el sitio' : 'Variables de esta página' }}
+                  </p>
+
+                  @for (group of siteVariableGroups(); track trackSiteVariableGroup($index, group)) {
+                    <mat-form-field
+                      appearance="outline"
+                      subscriptSizing="dynamic"
+                      class="site-variable-field mb-4 w-full text-[0.8rem]"
+                      [floatLabel]="siteVariableDefault(group.base) ? 'always' : 'auto'"
+                    >
+                      <mat-label>{{ group.base }}</mat-label>
+                      <input
+                        matInput
+                        type="text"
+                        [value]="siteVariableValue(group.base)"
+                        (change)="setSiteVariable(group.base, $any($event.target).value)"
+                        [placeholder]="siteVariableDefault(group.base) || (group.casing ? 'ej. mi-mejor-proyecto' : 'ej. valor real')"
+                      />
+                    </mat-form-field>
+                  }
+
+                  <p class="mt-1.5 text-[0.78rem] leading-snug text-[var(--color-ink-muted)]">
+                    Estos datos los veras a lo largo de la documentación como (--VARIABLE--) y será reemplazados
+                    por lo que ingreses en los campos con el nombre de las variables, esto te ayudará a poder
+                    copiar y pegar los comandos directamente con tus datos. Estos datos que asignes a las
+                    variables se guardan ÚNICAMENTE en este dispositivo (memoria local del navegador) -- nunca se
+                    envían al servidor ni se comparten con este sitio de ninguna otra forma. Puedes completarlos
+                    con confianza.
+                  </p>
+                </div>
+              }
+
+              @if (codeLanguages().length > 0) {
+                <div class="mt-6 border-t border-[var(--color-border)] pt-4">
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <p class="text-[0.8rem] font-semibold tracking-wide text-[var(--color-ink-muted)] uppercase">Temas de codigo</p>
+                    <button
+                      type="button"
+                      class="text-[0.78rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                      (click)="resetAllCodeThemes()"
+                    >
+                      Restablecer todo
+                    </button>
+                  </div>
+                  <ul class="m-0 flex list-none flex-col gap-1 p-0">
+                    <!-- Fila "All" -- elige un tema para TODOS los lenguajes visibles de un solo
+                         golpe; muestra "Mixto" (sin resaltar ninguna opcion) en cuanto un lenguaje
+                         individual se aparta del resto (ver commonThemeFor()). Siempre primera,
+                         antes de cualquier lenguaje real. -->
+                    <li class="text-[0.75rem]">
+                      <button
+                        type="button"
+                        class="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 hover:bg-[var(--color-surface-raised)]"
+                        (click)="toggleThemeInline(allLanguagesThemeId)"
+                        [attr.aria-expanded]="expandedThemeLang() === allLanguagesThemeId"
+                      >
+                        <span class="font-semibold text-[var(--color-ink-muted)]">All</span>
+                        <span class="flex items-center gap-0.5 text-[var(--color-ink)]">
+                          {{ allCodeThemeLabel() }}
+                          <span class="material-symbols-outlined text-[16px]">{{
+                            expandedThemeLang() === allLanguagesThemeId ? 'expand_less' : 'expand_more'
+                          }}</span>
+                        </span>
+                      </button>
+                      @if (expandedThemeLang() === allLanguagesThemeId) {
+                        <div class="mt-1 px-1 pb-1" (click)="$event.stopPropagation()">
+                          <ndmk-searchable-select
+                            [items]="codeThemeItems()"
+                            [value]="allCodeTheme()"
+                            placeholder="Buscar tema..."
+                            (valueChange)="setCodeTheme(allLanguagesThemeId, $event)"
+                          />
+                        </div>
+                      }
+                    </li>
+                    @for (lang of codeLanguages(); track lang.lang) {
+                      <li class="text-[0.85rem]">
+                        <!-- Click en el lenguaje O en su tema actual abre el selector inline, aqui
+                             mismo -- sin quitar el acceso desde el engrane de la barra 1/menu
+                             (util en movil, donde esta barra 3 no siempre esta visible). -->
+                        <button
+                          type="button"
+                          class="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 hover:bg-[var(--color-surface-raised)]"
+                          (click)="toggleThemeInline(lang.lang)"
+                          [attr.aria-expanded]="expandedThemeLang() === lang.lang"
+                        >
+                          <span class="text-[var(--color-ink-muted)]">{{ lang.lang }}</span>
+                          <span class="flex items-center gap-0.5 text-[var(--color-ink)]">
+                            {{ codeTheme.themeLabelFor(lang.lang) }}
+                            <span class="material-symbols-outlined text-[16px]">{{
+                              expandedThemeLang() === lang.lang ? 'expand_less' : 'expand_more'
+                            }}</span>
+                          </span>
+                        </button>
+                        @if (expandedThemeLang() === lang.lang) {
+                          <div class="mt-1 px-1 pb-1" (click)="$event.stopPropagation()">
+                            <ndmk-searchable-select
+                              [items]="codeThemeItems()"
+                              [value]="codeTheme.themeFor(lang.lang)"
+                              placeholder="Buscar tema..."
+                              (valueChange)="setCodeTheme(lang.lang, $event)"
+                            />
+                          </div>
+                        }
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="flex justify-center pt-8">
+              <button
+                type="button"
+                class="flex h-6 w-6 items-center justify-center rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                [class]="onThisPage.bar.glow() ? 'animate-[bar-glow_1s_ease]' : ''"
+                (click)="onThisPage.bar.toggle()"
+                aria-label="Mostrar panel En esta pagina"
+              >
+                <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+              </button>
+            </div>
+          }
+        </aside>
+        }
+      </div>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

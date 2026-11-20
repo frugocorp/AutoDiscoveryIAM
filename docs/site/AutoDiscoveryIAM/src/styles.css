@@ -1,0 +1,222 @@
+/* Tema M3 pre-compilado de Angular Material -- CSS plano (sin necesitar Sass), azure-blue es solo
+   el punto de partida (ver @angular/material/prebuilt-themes/ por otros). Solo define la paleta
+   CLARA -- las variables --mat-sys-* de mas abajo, bajo [data-theme='dark'], son overrides
+   manuales para que el chrome de Material (sidenav/menu) tambien responda al toggle de tema. */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+
+/* Entrada de Tailwind v4 -- las clases de utilidad se usan directo en los .html; ningun .css de
+   componente necesita @apply. @tailwindcss/typography da las clases prose/prose-invert usadas en
+   el articulo de cada pagina (ver doc-page.html) para el HTML crudo que parser-md ya genero, sin
+   tener que escribir a mano el espaciado de h1-h6/p/ul/code/etc. */
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/* El toggle de tema (ThemeService) estampa data-theme="dark"/"light" en <html> -- se conecta la
+   variante dark: de Tailwind a ese mismo atributo, en vez de a prefers-color-scheme, para que
+   ambos sistemas compartan un unico mecanismo de tema (ver ThemeService.readInitialMode()). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Se elimino un bloque "@theme inline" que registraba --color-canvas/surface/border/ink/etc. como
+   colores de tema de Tailwind (bg-X/text-X/border-X, forma corta) -- ningun archivo de la
+   plantilla usa esa forma corta, todos usan el valor arbitrario "[var(--color-x)]" directo (ej.
+   "border-[var(--color-border)]"), que no necesita registro en @theme para nada. Peor: registrar
+   un color de tema llamado exactamente "border" (desde --color-border) choca con el PREFIJO de
+   utilidad "border-" de Tailwind -- un bug real encontrado en produccion: NINGUNA utilidad
+   "border-[var(--color-border)]" compilaba (bordes invisibles en barras 1/2/3), mientras que
+   "border-[var(--color-primary)]" (sin colision de nombre) si compilaba normal. */
+
+@layer base {
+  a {
+    color: var(--color-link);
+  }
+}
+
+:root {
+  /* Sin esto, el navegador dibuja el UI nativo (scrollbar, inputs, etc.) con su tema CLARO por
+     default sin importar el fondo oscuro de la pagina -- ej. una scrollbar blanca encima de
+     --color-bg oscuro. "light dark" en :root deja que el navegador elija segun prefers-color-scheme
+     cuando no hay [data-theme] explicito; el override de abajo fuerza "dark" cuando
+     ThemeService ya estampo data-theme="dark". */
+  color-scheme: light dark;
+
+  /* Anchos de las barras 1 y 2 -- la barra 3 (on-this-page) reusa el mismo valor que la 2 al
+     estar expandida (ver docs-shell.html). */
+  --sidebar-width-primary: 72px;
+  --sidebar-width-secondary: 260px;
+  --sidebar-width-collapsed: 32px;
+
+  --color-text: #1a1d23;
+  --color-text-muted: #5b6270;
+  --color-bg: #ffffff;
+  --color-link: #4f46e5;
+  --color-border: #e2e4e9;
+  --color-surface: #f7f8fa;
+  --color-surface-raised: #ffffff;
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+
+  /* Alias real -- decenas de .html de la plantilla (app-shell, docs-shell, nav-tree, footer,
+     doc-page, home-page) usan "var(--color-ink)"/"var(--color-ink-muted)" (nomenclatura que llego
+     con code-block-colors.config.ts), pero el resto del sitio siempre definio los tokens de texto
+     como "--color-text"/"--color-text-muted" -- ese nombre NUNCA existio como variable real, asi
+     que todo ese texto quedaba sin ningun "color" resuelto (bug real, encontrado 2026-08-08): el
+     navegador ignora un var() que no resuelve a nada e inherita el color del padre, lo cual por
+     casualidad se veia bien casi siempre (el "color-scheme" de mas abajo ya pone un default UA
+     razonable), EXCEPTO en componentes con su propio fallback local atado a
+     "prefers-color-scheme" en vez de a este [data-theme] (ver ndmk-searchable-select) -- ahi
+     "el color no resuelve" y "el fallback sigue al SO, no al toggle del sitio" se combinaban en
+     texto invisible cuando el SO y el tema elegido del sitio no coincidian. */
+  --color-ink: var(--color-text);
+  --color-ink-muted: var(--color-text-muted);
+
+  /* Sin esto, ".mat-drawer-side" (CSS propio de Angular Material, ver node_modules) resuelve su
+     "border-right-color"/"border-left-color" a "transparent" (su propio fallback cuando este
+     token no esta definido) -- y como ese selector tiene la MISMA especificidad que la utilidad
+     de Tailwind "border-[var(--color-border)]" (ver app-shell.html/docs-shell.html) y su <style>
+     de componente se inyecta DESPUES de styles.css en el documento, gana por orden de cascada:
+     el borde entre barra 1/2 quedaba con ancho/estilo correctos pero color transparente,
+     invisible aunque las clases de Tailwind estuvieran bien puestas. Universal (no solo dentro
+     de [data-theme='dark']) porque --color-border ya resuelve el valor correcto por tema. */
+  --mat-sidenav-container-divider-color: var(--color-border);
+}
+
+/* ThemeService siempre estampa data-theme explicito ("light" o "dark", ver theme.service.ts) -- el
+   override de "light" tambien es necesario, no solo el de "dark": sin el, si el usuario elige
+   "claro" a mano mientras su SO esta en oscuro, "light dark" del :root de arriba dejaria que el
+   navegador siga la preferencia del SO en vez de la eleccion explicita del sitio. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-text: #e8e9ec;
+  --color-text-muted: #9095a1;
+  --color-bg: #14161a;
+  --color-link: #a5b4fc;
+  --color-border: #2a2d34;
+  --color-surface: #1c1f24;
+  --color-surface-raised: #24272e;
+  --color-primary: #a5b4fc;
+  --color-primary-hover: #c7d2fe;
+
+  /* Overrides manuales de los tokens M3 que el chrome de Material (mat-sidenav-container,
+     mat-menu-panel, etc.) consume directo -- el tema pre-compilado importado arriba solo trae la
+     paleta clara; sin esto, el drawer/menu de Material se quedarian claros aunque el resto del
+     sitio ya este en modo oscuro. */
+  --mat-sys-background: var(--color-bg);
+  --mat-sys-on-background: var(--color-text);
+  --mat-sys-surface: var(--color-surface);
+  --mat-sys-surface-container: var(--color-surface);
+  --mat-sys-surface-container-low: var(--color-bg);
+  --mat-sys-surface-container-high: var(--color-surface-raised);
+  --mat-sys-on-surface: var(--color-text);
+  --mat-sys-on-surface-variant: var(--color-text-muted);
+  --mat-sys-outline: var(--color-border);
+  --mat-sys-outline-variant: var(--color-border);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+/* Scrollbar casi del mismo tono que el fondo del sitio -- sin esto, el navegador dibuja su
+   scrollbar nativa (gris/blanca por default) sin relacion con el tema, contrastando fuerte contra
+   un fondo oscuro. "scrollbar-color" (Firefox) hereda a cualquier region con scroll del documento;
+   WebKit/Chromium necesita el pseudo-elemento -- "*" en vez de listar cada contenedor con scroll
+   (.content-canvas, el <aside> de la barra 3, el panel interno de la barra 2) para que un
+   contenedor scrollable nuevo en el futuro ya quede cubierto sin acordarse de agregarlo aqui; el
+   costo para WebKit es despreciable, la regla solo pinta donde de verdad hay overflow. */
+* {
+  scrollbar-color: var(--color-border) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Pulso de brillo del boton de colapsar/expandir (barras 2 y 3, ver createCollapsibleBar()) --
+   referenciado desde el HTML via la utilidad arbitraria de Tailwind animate-[bar-glow_1s_ease]. */
+@keyframes bar-glow {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--color-primary);
+  }
+}
+
+/* Callouts ("> [!TIP]", ver parser-md/src/callouts.ts) -- parser-md es agnostico de framework, asi
+   que solo emite clases semanticas (.callout/.callout-icon/.callout-body) sin ningun estilo; el
+   consumidor decide como se ven, igual que .hljs-* en code-block.scss. Va aqui (global, no en un
+   .css de componente) porque el HTML del callout llega como string crudo via [innerHTML]
+   (DocSegments, @case('html')) -- Angular nunca lo compila, asi que el atributo de scoping de un
+   stylesheet con encapsulacion emulada no le alcanzaria. Sin esto: el <svg> del icono no tiene
+   width/height propios (solo viewBox) y el navegador lo dibuja a su tamano de reemplazo por
+   default (gigante); y sin padding/borde/fondo no hay ninguna "caja" que enmarque el texto. */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.callout-icon {
+  flex: none;
+  display: flex;
+  color: var(--color-primary);
+}
+
+.callout-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.callout-body {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.callout-body > :first-child {
+  margin-top: 0;
+}
+
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ScrollSpyDirective activa una seccion cuando su borde superior cruza una linea fija (ver
+   activationLine() en scroll-spy.directive.ts) -- en una pagina corta, la ULTIMA seccion nunca
+   llega a poder subir tanto porque el contenido se termina antes. La seccion visualmente ULTIMA
+   (".page-section-last", calculada en TS -- ver last-section.util.ts/DocPage.lastSectionId, un H1
+   casi siempre envuelve TODO lo demas, asi que ":last-child" de CSS puro solo agarraria ese wrapper
+   exterior, nunca la subseccion real) mide un viewport completo -- asi su titulo siempre puede
+   llegar al tope del area con scroll, sin importar cuan corta sea la pagina. */
+.page-section-last {
+  height: 100vh;
+}

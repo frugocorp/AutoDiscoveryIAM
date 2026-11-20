@@ -1,0 +1,3 @@
+namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Roles.Commands.DeleteRolePermissionsByPermissionPublicId;
+
+public record DeleteRolePermissionsByPermissionPublicIdCommand(Guid RolePublicId, Guid PermissionPublicId);

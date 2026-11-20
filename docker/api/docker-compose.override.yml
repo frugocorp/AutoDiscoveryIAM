@@ -1,0 +1,30 @@
+services:
+  adiam-api:
+    build:
+      context: ${API_BUILD_CONTEXT}
+      dockerfile: ${API_DOCKERFILE_PATH}
+      target: dev
+      additional_contexts:
+        nugetfeed: ${NUGET_LOCAL_FEED_PATH}
+      args:
+        - API_PORT_CONTAINER=${API_PORT_CONTAINER}
+        - PROJECT_PATH=${API_PROJECT_PATH}
+        - PROJECT_NAME=${API_PROJECT_NAME}
+    volumes:
+      # Monta el codigo fuente local para desarrollo interactivo, para que dotnet watch reaccione
+      # a cambios. Ruta destino absoluta -- coincide con el WORKDIR de la etapa "dev" del
+      # Dockerfile. Concatena API_BUILD_CONTEXT + API_PROJECT_PATH (ambos en .env) para no repetir
+      # la ruta del proyecto una tercera vez. Tambien monta la libreria (src/AutoDiscoveryIAM) ya
+      # que el SampleHost la referencia via ProjectReference -- si tu proyecto no depende de otra
+      # carpeta local, borra esa segunda linea de volumen.
+      - ${API_BUILD_CONTEXT}${API_PROJECT_PATH}:/src/${API_PROJECT_PATH}
+      - ${API_BUILD_CONTEXT}src/AutoDiscoveryIAM:/src/src/AutoDiscoveryIAM
+      # Aísla bin y obj para que los builds/restores del contenedor NO toquen tus artefactos locales
+      - /src/${API_PROJECT_PATH}/bin
+      - /src/${API_PROJECT_PATH}/obj
+      - /src/src/AutoDiscoveryIAM/bin
+      - /src/src/AutoDiscoveryIAM/obj
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:${API_PORT_CONTAINER}
+    working_dir: /src/${API_PROJECT_PATH}

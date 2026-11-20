@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Excluir pruebas de performance para ejecución rápida -->
+    <TestCaseFilter>Category!=Performance</TestCaseFilter>
+    
+    <!-- Optimizado para velocidad -->
+    <MaxCpuCount>0</MaxCpuCount>
+    <DisableParallelization>false</DisableParallelization>
+    
+    <!-- Directorios -->
+    <ResultsDirectory>./runsettings/coverage</ResultsDirectory>
+    
+    <!-- Timeout reducido para desarrollo -->
+    <TestSessionTimeout>600000</TestSessionTimeout> <!-- 10 minutos -->
+    
+    <!-- Logging mínimo -->
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+  </RunConfiguration>
+
+  <!-- Configuración específica para xUnit -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>0</MaxParallelThreads> <!-- Usar todos los cores disponibles -->
+  </xUnit>
+
+  <!-- Sin recolección de datos para máxima velocidad -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Sin data collectors para ejecución rápida -->
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

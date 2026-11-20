@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  },
+  "include": ["src/**/*.ts", "frugocorp_modules/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "frugocorp_modules/**/*.spec.ts"]
+}

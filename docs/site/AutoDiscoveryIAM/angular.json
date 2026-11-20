@@ -1,0 +1,77 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "autodiscoveryiam": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/autodiscoveryiam",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+              ,
+              {
+                "glob": "*.css",
+                "input": "node_modules/@ngx-docs-markdown-kit/parser-md-code-block-themes/assets",
+                "output": "code-themes"
+              }
+            ],
+            "styles": [
+              "src/styles.css",
+              "@angular/cdk/overlay-prebuilt.css"
+            ],
+            "server": "src/main.server.ts",
+            "outputMode": "static",
+            "security": {
+              "allowedHosts": []
+            }
+          },
+          "configurations": {
+            "production": {
+              "budgets": [{ "type": "initial", "maximumWarning": "1MB", "maximumError": "1.5MB" }],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": { "buildTarget": "autodiscoveryiam:build:production" },
+            "development": { "buildTarget": "autodiscoveryiam:build:development" }
+          },
+          "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            // Causa raiz real (encontrada leyendo test-discovery.js del builder): CUALQUIER patron
+            // dinamico (con "*") se globea con cwd=sourceRoot ("src/"), sin importar que el patron
+            // en si no empiece con "src/" -- "frugocorp_modules/**/*.spec.ts" terminaba buscando
+            // (en vano) dentro de "src/frugocorp_modules/". El "../" al principio lo saca de
+            // sourceRoot antes de buscar, resolviendo al "frugocorp_modules/" real (hermano de
+            // "src/", no su hijo).
+            "include": ["src/**/*.spec.ts", "../frugocorp_modules/**/*.spec.ts"]
+          }
+        }
+      }
+    }
+  }
+}

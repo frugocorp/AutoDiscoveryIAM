@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Solo pruebas de seguridad (JWT tampering, IDOR, 2FA, CORS, etc.) -->
+    <TestCaseFilter>Category=Security</TestCaseFilter>
+
+    <!-- Paralelismo moderado: hay pruebas de fuerza bruta acotada / rate limiting sensibles a timing -->
+    <MaxCpuCount>2</MaxCpuCount>
+    <DisableParallelization>false</DisableParallelization>
+
+    <!-- Directorios -->
+    <ResultsDirectory>./runsettings/coverage</ResultsDirectory>
+
+    <!-- Timeout extendido: hay pruebas con múltiples requests secuenciales (rate limit, 2FA) -->
+    <TestSessionTimeout>1800000</TestSessionTimeout> <!-- 30 minutos -->
+
+    <!-- Logging detallado para análisis -->
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+  </RunConfiguration>
+
+  <!-- Configuración específica para xUnit -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>2</MaxParallelThreads>
+  </xUnit>
+
+  <!-- Sin recolección de cobertura: este perfil es de comportamiento/seguridad, no de métricas -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

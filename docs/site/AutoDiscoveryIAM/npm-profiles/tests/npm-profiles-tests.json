@@ -1,0 +1,14 @@
+{
+  "links": {
+    "description": "Valida los links del contenido (public/content/**/*.md).",
+    "file": "links/npm-profiles-tests-links.json"
+  },
+  "unit": {
+    "description": "Suite completa de tests unitarios del proyecto (todos los *.spec.ts).",
+    "file": "unit/npm-profiles-tests-unit.json"
+  },
+  "performance": {
+    "description": "Mide el tiempo de parseo del contenido real del sitio.",
+    "file": "performance/npm-profiles-tests-performance.json"
+  }
+}

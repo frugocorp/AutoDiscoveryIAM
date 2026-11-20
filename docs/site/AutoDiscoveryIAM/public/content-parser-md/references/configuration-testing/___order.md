@@ -1,0 +1,5 @@
+- configuration.md
+- testing.md
+- coverage-setup.md
+- performance-timeouts.md
+- tech-stack.md

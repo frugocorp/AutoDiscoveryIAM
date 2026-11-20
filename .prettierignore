@@ -1,0 +1,63 @@
+# .prettierignore
+# Este archivo controla qué rutas y archivos serán ignorados por Prettier.
+# Se pueden usar patrones glob [glob patterns](.github/docs/conventions/glob-patterns.md) y excepciones con '!'
+
+# Ignora carpetas y archivos de compilación, dependencias y entornos
+**/bin/
+**/obj/
+**/dist/
+**/node_modules/
+**/coverage/
+
+# Archivos de entorno y logs
+.env
+.env.*
+*.log
+
+# Archivos y carpetas de C#/.NET que Prettier no debe tocar
+*.cs
+*.csproj
+*.sln
+*.user
+
+# Migraciones y backups
+**/Migrations/
+**/backup/
+**/*.bak
+
+# Configuración de IDE y herramientas
+.vs/
+.windsurf/
+.idea/
+*.iml
+
+# Carpetas específicas del proyecto (ajusta según tus necesidades)
+#docker/
+src/
+samples/
+#tests/
+
+# Ignora archivos de configuración que no sean compatibles
+*.dockerignore
+*.gitattributes
+*.gitignore
+*.editorconfig
+
+# --- EXCEPCIONES ---
+# Incluye todos los archivos Markdown
+!src/**/*.md
+!samples/**/*.md
+!docker/**/*.md
+!tests/**/*.md
+
+# Incluye todos los archivos YAML
+!src/**/*.yml
+!src/**/*.yaml
+!samples/**/*.yml
+!samples/**/*.yaml
+!docker/*.yml
+!docker/*.yaml
+!docker/**/*.yml
+!docker/**/*.yaml
+!tests/**/*.yml
+!tests/**/*.yaml

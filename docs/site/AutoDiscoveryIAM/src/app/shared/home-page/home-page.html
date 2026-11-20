@@ -1,0 +1,25 @@
+<div class="flex h-full flex-col items-center gap-8 overflow-y-auto px-6 py-16">
+  <div class="flex flex-col items-center gap-5 text-center">
+    @if (logo(); as logoSrc) {
+      <img [src]="logoSrc" [alt]="siteName" class="h-auto w-full max-w-[140px]" />
+    }
+
+    <h1 class="m-0 text-[1.75rem] font-bold text-[var(--color-ink)]">{{ resources().siteName }}</h1>
+
+    <a
+      [routerLink]="['/', firstSectionKey]"
+      class="rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-[0.9rem] font-semibold text-white no-underline hover:bg-[var(--color-primary-hover)]"
+    >
+      Ver documentacion
+    </a>
+  </div>
+
+  <!-- Mismo criterio de encapsulacion que doc-page.html: el HTML crudo del cuerpo (home.md, via
+       ContentService) necesita ViewEncapsulation.None en DocSegments -- prose/dark:prose-invert le
+       da tipografia/espaciado por default sin que este componente tenga que estilarlo a mano.
+       prose-code:before/after:content-none: mismo motivo que doc-page.html -- sin esto, el plugin
+       agrega comillas invertidas literales antes/despues de cada <code>. -->
+  <article class="doc-content prose dark:prose-invert prose-code:before:content-none prose-code:after:content-none max-w-[720px] prose-a:text-[var(--color-link)]">
+    <app-doc-segments [segments]="segments()" pagePath="home" [lastSectionId]="lastSectionId()" />
+  </article>
+</div>

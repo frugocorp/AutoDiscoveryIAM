@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FrugoCorp.AspNetCore.AutoDiscoveryIAM.UnitTests</RootNamespace>
+    <AssemblyName>FrugoCorp.AspNetCore.AutoDiscoveryIAM.UnitTests</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="AwesomeAssertions" Version="8.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NSubstitute" Version="5.0.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AutoDiscoveryIAM\AutoDiscoveryIAM.csproj" />
+  </ItemGroup>
+
+  <!-- La libreria referenciada usa FrameworkReference a Microsoft.AspNetCore.App: MSBuild resuelve
+       ensamblados como Microsoft.Extensions.Logging.Abstractions contra el "targeting pack" (solo
+       metadatos, sin cuerpos de metodo) y descarta cualquier copia local en conflicto, sin importar
+       CopyLocalLockFileAssemblies/PreserveCompilationContext/RestoreEnablePackagePruning: es la
+       resolucion de conflictos del SDK prefiriendo el framework compartido, no algo configurable por
+       proyecto. Coverlet instrumenta este ensamblado via Mono.Cecil, que necesita el archivo fisico
+       real (no el de solo metadatos) en el bin/ de este proyecto; sin el, falla con
+       CecilAssemblyResolutionException y la cobertura de la libreria sale en 0/N-A. Este target copia
+       el shared framework de ASP.NET Core realmente instalado, solo para satisfacer a Cecil, nunca
+       usado en tiempo de ejecucion de los tests. -->
+  <Target Name="CopyAspNetCoreSharedFrameworkForCoverage" AfterTargets="Build;Rebuild">
+    <ItemGroup>
+      <_AspNetCoreSharedFxAssemblies Include="$(NetCoreRoot)shared\Microsoft.AspNetCore.App\10.*\Microsoft.Extensions.Logging.Abstractions.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_AspNetCoreSharedFxAssemblies)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

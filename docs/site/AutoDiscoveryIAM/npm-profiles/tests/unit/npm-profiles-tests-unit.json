@@ -1,0 +1,14 @@
+{
+  "normal": {
+    "description": "Corre toda la suite (rapido, sin cobertura).",
+    "include": []
+  },
+  "coverage": {
+    "description": "Corre toda la suite CON reporte de cobertura real de TODO el proyecto (texto + HTML).",
+    "include": [],
+    "coverage": true,
+    "coverageReporters": ["text", "html"],
+    "coverageInclude": ["src/app/**/*.ts"],
+    "coverageExclude": ["src/app/**/*.spec.ts"]
+  }
+}

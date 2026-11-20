@@ -1,0 +1,16 @@
+<!-- La miga de pan vive en DocsShell (ver BreadcrumbService), fila real fuera de .content-canvas,
+     nunca superpuesta al scroll de este articulo.
+
+     prose/dark:prose-invert (@tailwindcss/typography): espaciado/tipografia por default para el
+     HTML crudo que parser-md ya genero. prose-headings:scroll-mt-6: aire arriba de cada
+     encabezado al saltar via fragmento (#id). prose-code:before/after:content-none: el plugin
+     agrega comillas invertidas literales antes/despues de CADA <code> via ::before/::after -- nos
+     sobra, nuestro <code> ya viene bien formado desde parser-md (bug real encontrado probando el
+     CLI contra un proyecto externo, ver CHANGELOG). -->
+<article
+  class="doc-content prose dark:prose-invert prose-code:before:content-none prose-code:after:content-none max-w-none prose-headings:scroll-mt-6 prose-a:text-[var(--color-link)] px-10 pt-8 pb-16 max-[1100px]:p-6"
+  [ndmkScrollSpy]="segments()"
+  (sectionChange)="onSectionChange($event)"
+>
+  <app-doc-segments [segments]="segments()" [pagePath]="pagePath()" [lastSectionId]="lastSectionId()" />
+</article>

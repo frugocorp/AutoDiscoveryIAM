@@ -1,0 +1,35 @@
+# SQL Server 2025 (17.x) es la version mayor GA mas reciente al momento de escribir esto
+# (verificado julio 2026) -- 2022-latest sigue disponible pero ya quedo una version mayor atras.
+# OJO: esto es un salto de VERSION MAYOR del motor, no solo un tag de Docker -- valida tus
+# migraciones/queries contra 2025 antes de confiar en esto para produccion (2022-latest sigue
+# siendo la opcion conservadora si prefieres no revalidar todavia).
+FROM mcr.microsoft.com/mssql/server:2025-latest
+
+# Instala las herramientas de línea de comandos (sqlcmd, bcp, ping, curl)
+USER root
+# NOTA: a partir de SQL Server 2022 CU14 (y 2019 CU28), la imagen YA trae mssql-tools18
+# preinstalado en /opt/mssql-tools18/bin -- este bloque instala ademas el paquete viejo
+# "mssql-tools" (ODBC 17) via apt, lo cual funciona pero es redundante en la practica; se deja
+# porque hoy funciona y no es urgente, pero se puede simplificar quitando este RUN y agregando
+# "/opt/mssql-tools18/bin" al PATH de abajo si se quiere una imagen mas chica/rapida de construir.
+RUN apt-get update && \
+    apt-get install -y curl apt-transport-https gnupg2 iputils-ping && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/ubuntu/24.04/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev && \
+    echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> /etc/bash.bashrc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+# La imagen base de 2025-latest corre sobre Ubuntu 24.04 (antes 22.04 en la de 2022-latest) --
+# por eso el config del repo de apt de arriba tambien se actualizo a "ubuntu/24.04". Esto es la
+# version de Ubuntu DENTRO del contenedor, independiente del Ubuntu del host donde corra Docker --
+# Docker solo necesita compatibilidad de kernel con el host, no que coincida la distro/version
+# del contenedor.
+ENV PATH="${PATH}:/opt/mssql-tools/bin"
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER mssql
+ENTRYPOINT ["/entrypoint.sh"]

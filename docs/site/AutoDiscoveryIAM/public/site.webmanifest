@@ -1,0 +1,15 @@
+{
+  "name": "AutoDiscoveryIAM",
+  "short_name": "AutoDiscoveryIAM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/images/FrugoCorp-Icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}

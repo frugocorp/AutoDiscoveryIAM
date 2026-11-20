@@ -1,0 +1,117 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FrugoCorp.AspNetCore.AutoDiscoveryIAM</RootNamespace>
+    <AssemblyName>FrugoCorp.AspNetCore.AutoDiscoveryIAM</AssemblyName>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Solo para los ensamblados de tests: no afecta la superficie publica que ve un consumidor del
+       paquete NuGet. UnitTests: permite probar directamente clases internal (ej. UserSeeder/
+       DevUserSeeder) sin promoverlas a public solo para poder testearlas. IntegrationTests: permite
+       que CustomWebApplicationFactory reuse las credenciales de UserSeeder/DevUserSeeder como unica
+       fuente de verdad, en vez de duplicar los mismos hashes Argon2id en el proyecto de tests. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrugoCorp.AspNetCore.AutoDiscoveryIAM.UnitTests" />
+    <InternalsVisibleTo Include="FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests" />
+  </ItemGroup>
+
+  <!-- Librería que extiende ASP.NET Core (minimal APIs, middleware, JWT bearer) sin ser una app
+       deployable: Microsoft.NET.Sdk.Web está pensado para el segundo caso (implica OutputType=Exe,
+       Program.cs con entry point, glob implícito de appsettings*.json como contenido empaquetable).
+       FrameworkReference da acceso a los mismos tipos (IEndpointRouteBuilder, WebApplication, etc.)
+       sin nada de eso. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Microsoft.NET.Sdk.Web agrega estos usings globales implícitos automáticamente; Microsoft.NET.Sdk
+       normal no. Se repiten aquí explícitos para no tener que agregar "using" a cada archivo del
+       proyecto (mismo set que documenta Microsoft para el SDK Web). -->
+  <ItemGroup>
+    <Using Include="System.Net.Http.Json" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <!-- Metadata de empaquetado NuGet. Description/PackageTags/PackageReleaseNotes en ingles a
+       proposito (decision explicita, no un descuido de idioma): nuget.org tiene audiencia
+       mayoritariamente angloparlante y solo muestra ~210-215 caracteres de Description en la
+       lista de resultados de busqueda, asi que el gancho de valor va en esa primera oracion. El
+       resto de la documentacion de cara al usuario (README, Swagger, este mismo repo) sigue en
+       espanol por convencion del proyecto; ver README.md para el detalle completo en espanol. -->
+  <PropertyGroup>
+    <PackageId>FrugoCorp.AspNetCore.AutoDiscoveryIAM</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Dynamic RBAC and JWT authentication for ASP.NET Core, with permissions auto-discovered from your real endpoints via EndpointDataSource: no manual permission maps to keep in sync. Includes refresh token rotation with reuse detection, 2FA (TOTP/email), Google social login, full account lifecycle (registration, activation, password reset, lockout), rate limiting, and native OpenAPI docs. Built with Vertical Slice Architecture on minimal APIs, no MVC, no MediatR.</Description>
+    <PackageReleaseNotes>0.1.0: initial preview release. JWT auth (access + refresh, rotation and reuse detection), 2FA (TOTP/email), Google social login, full account lifecycle, rate limiting and native OpenAPI docs. Dynamic RBAC: permissions are discovered from your own endpoints too (any root namespace following the Features.Feature.Action convention); the sync reports endpoints it cannot name and rejects duplicate keys across slices. The seeded AdminAutoDiscoveryIAM role administers users, roles and permissions from day one; IsSuAdmin/IsDevelopment are database-only. Upgrades keep your data: your migrations cover the schema, and the package applies its own data changes once on startup. Validated end-to-end from a clean external project, including an upgrade. MIT licensed.</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageTags>aspnetcore;dotnet;rbac;jwt;oauth;authentication;authorization;iam;identity;2fa;security;permissions;minimal-api</PackageTags>
+    <!-- Icono de organizacion (FrugoCorp), reusado como PackageIcon a proposito: mismo criterio
+         que .NET/Google en sus propios paquetes NuGet. Si algun dia se quiere un icono especifico
+         de esta libreria, se reemplaza el archivo referenciado abajo, no esta propiedad. -->
+    <PackageIcon>icon.png</PackageIcon>
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- Validacion de paquete del SDK: revisa la coherencia del .nupkg en cada pack. Despues de publicar
+         la 0.1.0, agregar <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
+         para que el pack falle si un cambio rompe la API publica respecto a esa version. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- Simbolos (.snupkg, se publican a la vez en NuGet.org) + SourceLink (incluido en el SDK): quien
+         consume el paquete puede depurar paso a paso dentro de la libreria, con el codigo exacto de esa version. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <!-- docs/nuget/README.md es un archivo DISTINTO al README.md de la raiz: ambos los genera
+       NDMKit (npm run readme en docs/site/AutoDiscoveryIAM) desde el sitio de documentacion. El
+       de GitHub lleva el sitio completo; este, solo las paginas de la libreria (las demas
+       declaran [readme_flavors] sin nuget). Nunca se editan a mano. -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="" />
+    <None Include="..\..\docs\nuget\README.md" Pack="true" PackagePath="README.md" />
+    <None Include="..\..\FrugoCorp_Icon.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <!-- Referencia directa para fijar la version minima parcheada (CVE-2026-49451, GHSA-v5pm-xwqc-g5wc,
+         corregida en 2.7.5). Sin esto, Microsoft.AspNetCore.OpenApi 10.0.10 resuelve transitivamente
+         a Microsoft.OpenApi 2.0.0, la version vulnerable mas baja permitida.
+         No subir a 3.x todavia: probado en vivo (issue #88, post-Fase 7). El propio codigo generado
+         por el source generator de Microsoft.AspNetCore.OpenApi 10.0.10 (OpenApiXmlCommentSupport.generated.cs)
+         no compila contra la forma de API de Microsoft.OpenApi 3.x (IOpenApiMediaType.Example pasa a ser
+         de solo lectura, entre otros cambios). No es un problema de Swashbuckle: el propio paquete nativo
+         de .NET 10 esta atado a la forma 2.x todavia. Reevaluar cuando Microsoft publique una version de
+         Microsoft.AspNetCore.OpenApi compatible con Microsoft.OpenApi 3.x.
+
+         https://learn.microsoft.com/es-es/aspnet/core/breaking-changes/11/microsoft-openapi-3x?view=aspnetcore-10.0
+         
+         En ese link menciona la solución para pasar de 2.x a 3.x, cambio que será necesario al pasar a .Net 11 ya que 
+         actualmente .Net 10 está construido sobre la versión 2.x de Microsoft.OpenApi, pero la .Net11 está oficialmente
+         sobre Microsoft.OpenApi 3.x-->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Otp.NET" Version="1.4.1" />
+    <!-- Solo el paquete base (DbContext, DbSet, IEntityTypeConfiguration, etc.). Ningún proveedor
+         concreto (SqlServer/Npgsql/Sqlite/etc.) es dependencia de la librería, y no trae migraciones
+         empaquetadas: cada proyecto consumidor genera las suyas propias, con el proveedor que elija,
+         desde su propio proyecto (ver README.md). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="FluentValidation" Version="11.3.0" />
+  </ItemGroup>
+
+</Project>

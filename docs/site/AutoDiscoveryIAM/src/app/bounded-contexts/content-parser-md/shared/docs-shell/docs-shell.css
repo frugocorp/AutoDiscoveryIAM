@@ -1,0 +1,41 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Custom properties INTERNAS de Material (".mat-drawer { width }") -- no expresables con una
+   utilidad de Tailwind. El resto del layout de este componente usa Tailwind (ver docs-shell.html). */
+.sidebar-secondary {
+  --mat-sidenav-container-width: var(--sidebar-width-secondary);
+  /* Mismo motivo que .sidebar-primary en app-shell.css: barras cuadradas, sin el "shape" M3 por
+     default. */
+  --mat-sidenav-container-shape: 0;
+  border-radius: 0;
+  transition: width 0.2s ease;
+}
+
+.sidebar-secondary.collapsed {
+  --mat-sidenav-container-width: var(--sidebar-width-collapsed);
+}
+
+/* Barra 3 (on-this-page): plain <aside>, no mat-sidenav -- su ancho si es una propiedad CSS
+   estandar, pero se deja aqui junto a la de arriba para mantener el mismo par expandido/colapsado
+   en un solo lugar en vez de repartir la logica entre .css y clases de Tailwind. */
+.on-this-page {
+  width: var(--sidebar-width-secondary);
+  transition: width 0.2s ease;
+}
+
+.on-this-page.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+/* Campos de "Mis Variables" -- el marco default (--mat-sys-outline, ver styles.css) usa
+   --color-border, pensado para divisores sutiles, no para el borde de un campo interactivo: se
+   perdia contra el fondo del panel. --color-ink ya resuelve alto contraste en los 2 temas (casi
+   blanco en oscuro, casi negro en claro), asi que ademas de distinguirse mejor, nunca hace falta
+   overridearlo por separado para dark/light. */
+.site-variable-field {
+  --mat-form-field-outlined-outline-color: var(--color-ink);
+  --mat-form-field-outlined-hover-outline-color: var(--color-ink);
+}

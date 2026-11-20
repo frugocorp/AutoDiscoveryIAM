@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests</RootNamespace>
+    <AssemblyName>FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="AwesomeAssertions" Version="8.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NSubstitute" Version="5.0.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.Test.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update=".env">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\samples\AutoDiscoveryIAM.SampleHost\AutoDiscoveryIAM.SampleHost.csproj" />
+  </ItemGroup>
+
+  <!-- Ver el mismo target en AutoDiscoveryIAM.UnitTests.csproj: SampleHost trae FrameworkReference a
+       Microsoft.AspNetCore.App (implicito por Microsoft.NET.Sdk.Web), asi que este proyecto hereda el
+       mismo problema de resolucion de conflictos del SDK (prefiere el "targeting pack", solo
+       metadatos, sobre la copia local real) para ensamblados como Microsoft.Extensions.Logging.Abstractions.
+       Sin el archivo fisico real en el bin/ de este proyecto, Coverlet/Mono.Cecil no puede
+       instrumentar la libreria y la cobertura sale en 0/N-A. -->
+  <Target Name="CopyAspNetCoreSharedFrameworkForCoverage" AfterTargets="Build;Rebuild">
+    <ItemGroup>
+      <_AspNetCoreSharedFxAssemblies Include="$(NetCoreRoot)shared\Microsoft.AspNetCore.App\10.*\Microsoft.Extensions.Logging.Abstractions.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_AspNetCoreSharedFxAssemblies)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

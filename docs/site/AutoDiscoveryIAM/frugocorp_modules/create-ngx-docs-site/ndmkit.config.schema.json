@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ndmkit.config.json",
+  "description": "Fuente de respaldo de UN sitio generado por create-ngx-docs-site -- NUNCA se commitea (ver .gitignore de este sitio y ndmkit.config.json.template, su version de ejemplo que SI viaja en el repo). Respaldar este archivo junto con public/content-parser-md/ alcanza para recrear el sitio igual con 'npm create ngx-docs-site -- --config <ruta-al-respaldo>'. No es un valor leido en build-time: es una foto del estado resuelto al crear/recrear el sitio: los *.config.ts reales siguen siendo la fuente editable de siempre.",
+  "type": "object",
+  "properties": {
+    "displayName": {
+      "type": "string",
+      "description": "Nombre mostrado del sitio (titulo, SEO, etc). Si se omite el nombre en la linea de comandos junto con --config, se usa este valor."
+    },
+    "projectName": {
+      "type": "string",
+      "description": "Nombre tecnico (kebab-case) -- carpeta, dist/<projectName>, name de angular.json/package.json. Lo que usan Docker y cualquier despliegue."
+    },
+    "renderMode": {
+      "type": "string",
+      "enum": ["static", "server"],
+      "description": "Igual que --render-mode en la linea de comandos."
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Mapa id -> habilitada. Ids conocidos: code-block-themes, image, card, file-embed. false equivale a --no-<id>.",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": ["string", "null"],
+          "description": "Ruta relativa (desde la raiz de este sitio) al archivo LICENSE/LICENSE.txt/LICENSE.md real. null para que el CLI lo busque solo (sube por los directorios padre hasta la raiz del repo)."
+        }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "keywords": { "type": "string" },
+        "siteUrl": { "type": ["string", "null"], "description": "Sin esto, sitemap.xml/robots.txt/canonical/JSON-LD no se generan." },
+        "author": { "type": "string" },
+        "socialLinks": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "siteVariableDefaults": {
+      "type": "object",
+      "description": "Valores de ejemplo de 'Mis Variables', mostrados antes de que el lector complete su propio valor. Mapa CLAVE -> valor.",
+      "additionalProperties": { "type": "string" }
+    },
+    "codeBlockThemes": {
+      "type": "object",
+      "properties": {
+        "visibleLanguages": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Lenguajes a mostrar en el selector de temas de codigo. null muestra todos los registrados."
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "description": "Dato legal real (fecha de vigencia + correo de contacto) para privacy-en.md/privacy-es.md -- NUNCA via 'Mis Variables' (eso vive en localStorage por navegador, un dato legal debe ser igual para todos los visitantes). Ambos null deja los placeholders de fabrica ([DATE]/[FECHA], etc.), que frenan 'npm run build' (ver validate-privacy-placeholders.mjs) hasta completarlos.",
+      "properties": {
+        "contactEmail": { "type": ["string", "null"] },
+        "effectiveDate": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

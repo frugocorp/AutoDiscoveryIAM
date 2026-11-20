@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Excluir performance para focus en cobertura -->
+    <TestCaseFilter>Category!=Performance</TestCaseFilter>
+    
+    <!-- Paralelismo moderado para coverage preciso -->
+    <MaxCpuCount>2</MaxCpuCount>
+    <DisableParallelization>false</DisableParallelization>
+    
+    <!-- Directorios -->
+    <ResultsDirectory>./coverage/raw</ResultsDirectory>
+    
+    <!-- Timeout moderado -->
+    <TestSessionTimeout>1800000</TestSessionTimeout> <!-- 30 minutos -->
+    
+    <!-- Logging detallado -->
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+  </RunConfiguration>
+
+  <!-- Configuración específica para xUnit -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>2</MaxParallelThreads>
+  </xUnit>
+
+  <!-- Coverage detallado -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Code Coverage con coverlet -->
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <!-- Múltiples formatos para análisis -->
+          <Format>cobertura,json,lcov,opencover</Format>
+          
+          <!-- Incluir solo el proyecto principal -->
+          <Include>[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*</Include>
+          
+          <!-- Excluir archivos no relevantes -->
+          <Exclude>[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Migrations.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Migrations.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.*Tests*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Docs.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Docs.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.*OpenApi*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM].Data.Seeds.*</Exclude>
+          
+          <!-- Excluir archivos específicos -->
+          <ExcludeByFile>
+            **/Migrations/**/*.cs;
+            **/*ModelSnapshot.cs;
+            **/Docs/**/*.cs;
+            **/Data/Seeds/**/*.cs;
+            **/*ExampleSwagger*.cs;
+            **/*OpenApi*.cs;
+            **/obj/**/*.cs;
+            **/bin/**/*.cs
+          </ExcludeByFile>
+          
+          <!-- Excluir por atributos -->
+          <ExcludeByAttribute>
+            ExcludeFromCodeCoverageAttribute;
+            GeneratedCodeAttribute;
+            CompilerGeneratedAttribute
+          </ExcludeByAttribute>
+          
+          <!-- Configuraciones adicionales -->
+          <UseSourceLink>false</UseSourceLink>
+          <SingleHit>false</SingleHit>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

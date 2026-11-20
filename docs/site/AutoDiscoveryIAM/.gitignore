@@ -1,0 +1,42 @@
+/dist
+/node_modules
+/out-tsc
+/.angular
+*.tsbuildinfo
+
+# Copiado por Docker (additional_context "npmfeed", ver docker/app/web/<sitio>/.env,
+# APP_NPM_FEED_PATH) desde dist/ raiz del monorepo antes de "npm ci" -- nunca se commitea aqui, la
+# fuente real vive en /dist (raiz). Solo aplica a sitios generados dentro de este monorepo (donde
+# existe ese dist/ raiz); si generas un sitio fuera de el, esta carpeta simplemente no se crea.
+/vendor
+
+# Generado por frugocorp_modules/parser-md/scripts/generate-content-manifest.mjs en cada
+# "npm start"/"npm run build" -- nunca se commitea, igual que public/sitemap.xml/robots.txt
+# (frugocorp_modules/parser-md-seo/scripts/generate-seo-files.mjs). Rutas via paths.config.ts.
+/frugocorp_modules/parser-md/generated/content-manifest.generated.ts
+
+# Generados por frugocorp_modules/parser-md-seo/scripts/generate-seo-files.mjs en cada
+# "npm start"/"npm run build" -- nunca se commitean (dependen de "siteUrl" de seo.config.ts).
+/public/robots.txt
+/public/sitemap.xml
+
+# Generado por frugocorp_modules/create-ngx-docs-site/scripts/validate-site-variables.mjs en cada
+# "npm start"/"npm run build" -- lista completa de variables "Mis Variables" de TODO el sitio
+# (toggle "mostrar todas"), mismo criterio que el manifiesto de contenido de arriba.
+/frugocorp_modules/create-ngx-docs-site/services/site-variables/generated/all-site-variables.generated.ts
+
+# "___content_dir.md" es la pagina propia de CADA carpeta de contenido -- lo escribe el mismo
+# generador de arriba a partir del manifiesto, nunca a mano (ver cardsExtension en parser-md).
+public/content-parser-md/**/___content_dir.md
+
+# Documentos staging por flavor de frugocorp_modules/parser-md-converter/scripts/generate-readme.mjs
+# -- nunca se commitean, son la fuente intermedia para el splice sobre los README reales (que SI se
+# commitean: README.md/README.en-US.md en la raiz del proyecto).
+/frugocorp_modules/parser-md-converter/generated/
+
+# Respaldo real de la config propia de ESTE sitio (SEO, licencia, variables, fecha/correo de
+# privacidad) -- escrito por create-ngx-docs-site en cada "npm create"/"--config", NUNCA se
+# commitea (mismo patron que .env/.env.template: la version de ejemplo SI viaja en el repo, ver
+# ndmkit.config.json.template). Respaldalo vos mismo (fuera de git) si lo necesitas para recrear
+# el sitio despues con "npm create ngx-docs-site -- --config <tu-respaldo>".
+/ndmkit.config.json

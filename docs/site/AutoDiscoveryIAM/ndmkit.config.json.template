@@ -1,0 +1,30 @@
+{
+  "$schema": "./frugocorp_modules/create-ngx-docs-site/ndmkit.config.schema.json",
+  "displayName": "AutoDiscoveryIAM",
+  "projectName": "autodiscoveryiam",
+  "renderMode": "static",
+  "extensions": {
+    "code-block-themes": true,
+    "image": true,
+    "card": true,
+    "file-embed": true
+  },
+  "license": {
+    "path": null
+  },
+  "seo": {
+    "description": "Sitio de documentacion generado con create-ngx-docs-site.",
+    "keywords": "documentacion, markdown, angular",
+    "siteUrl": null,
+    "author": "AutoDiscoveryIAM",
+    "socialLinks": []
+  },
+  "siteVariableDefaults": {},
+  "codeBlockThemes": {
+    "visibleLanguages": null
+  },
+  "privacy": {
+    "contactEmail": null,
+    "effectiveDate": null
+  }
+}

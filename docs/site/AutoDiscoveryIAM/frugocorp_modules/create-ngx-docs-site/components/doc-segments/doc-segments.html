@@ -1,0 +1,95 @@
+@for (segment of segments(); track $index) {
+  @switch (segment.type) {
+    @case ('html') {
+      <div [innerHTML]="trust(segment.html)"></div>
+    }
+    @case ('section') {
+      <section
+        [id]="pagePath() + '-' + segment.id"
+        [class]="'page-section ' + pagePath() + '-' + segment.id + (segment.id === lastSectionId() ? ' page-section-last' : '')"
+        [attr.data-heading-id]="segment.id"
+      >
+        <div [id]="segment.id" [innerHTML]="trust(segment.titleHtml)"></div>
+        <app-doc-segments [segments]="asSegments(segment.segments)" [pagePath]="pagePath()" [lastSectionId]="lastSectionId()" />
+      </section>
+    }
+    @case ('cards') {
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @for (card of segment.cards; track card.href) {
+          <a [routerLink]="card.href" class="no-underline">
+            <mat-card appearance="outlined" class="h-full">
+              <mat-card-header>
+                <mat-card-title>{{ card.title }}</mat-card-title>
+              </mat-card-header>
+              @if (card.description) {
+                <mat-card-content>
+                  <p class="text-[var(--color-ink-muted)]">{{ card.description }}</p>
+                </mat-card-content>
+              }
+            </mat-card>
+          </a>
+        }
+      </div>
+    }
+    @case ('code') {
+      <ndmk-code-block [code]="segment.code" [lang]="segment.lang" [path]="segment.path" />
+    }
+    @case ('card-code-block') {
+      <ndmk-card-code-block
+        [descriptionHtml]="segment.descriptionHtml"
+        [commandLang]="segment.commandLang"
+        [command]="segment.command"
+        [resultLabel]="segment.resultLabel"
+        [resultLang]="segment.resultLang"
+        [resultText]="segment.resultText"
+        [noteLabel]="segment.noteLabel"
+        [noteHtml]="segment.noteHtml"
+      />
+    }
+    @case ('image') {
+      <ndmk-image
+        [src]="segment.src"
+        [alt]="segment.alt"
+        [align]="segment.align ?? imageConfig().defaultAlign"
+        [width]="segment.width ?? imageConfig().defaultWidth ?? undefined"
+        [description]="segment.description"
+        [styles]="segment.styles"
+        [title]="segment.title"
+        [placeholder]="segment.placeholder"
+        [name]="segment.name"
+      />
+    }
+    @case ('content-card') {
+      <ndmk-content-card
+        [image]="segment.image"
+        [titleHtml]="segment.titleHtml"
+        [subtitleHtml]="segment.subtitleHtml"
+        [contentHtml]="segment.contentHtml"
+        [actions]="segment.actions"
+      />
+    }
+    @case ('file-embed') {
+      <ndmk-file-embed
+        [path]="segment.path"
+        [lang]="segment.lang"
+        [ranges]="segment.ranges"
+        [lineNumberLabel]="segment.lineNumberLabel"
+      />
+    }
+    @case ('list') {
+      @if (segment.ordered) {
+        <ol>
+          @for (item of segment.items; track $index) {
+            <li><app-doc-segments [segments]="asSegments(item)" [pagePath]="pagePath()" [lastSectionId]="lastSectionId()" /></li>
+          }
+        </ol>
+      } @else {
+        <ul>
+          @for (item of segment.items; track $index) {
+            <li><app-doc-segments [segments]="asSegments(item)" [pagePath]="pagePath()" [lastSectionId]="lastSectionId()" /></li>
+          }
+        </ul>
+      }
+    }
+  }
+}

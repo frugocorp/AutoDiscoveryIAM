@@ -1,0 +1,7 @@
+feed/
+packages/
+upgrade-state.json
+MiApi/bin/
+MiApi/obj/
+MiApi/Migrations/
+MiApi/appsettings.Development.json

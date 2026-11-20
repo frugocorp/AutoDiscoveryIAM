@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <!-- SIEMPRE "/" (nunca relativo a la URL actual) -- sin esto, un hard reload en una ruta con
+         2+ segmentos (ej. /docs/getting-started) resuelve "main.js"/"styles.css" contra ESA ruta
+         ("/docs/main.js", inexistente) en vez de la raiz del sitio: el catch-all SPA responde esas
+         URLs con el HTML de fallback (text/html), el navegador rechaza cargarlo como JS/CSS por
+         MIME type invalido, y la pagina queda en blanco. Una navegacion SPA (click en un link
+         interno) nunca dispara esto -- el bundle ya esta cargado en memoria de la carga inicial. -->
+    <base href="/" />
+    <!-- Deja "data-theme" puesto ANTES de que cargue cualquier CSS/Angular arranque -- sin esto,
+         la pagina siempre pinta primero en claro (el default de SSR, que no tiene
+         localStorage/matchMedia para saber la preferencia real) y recien cambia a oscuro un
+         instante despues, cuando ThemeService arranca en el navegador -- un parpadeo visible para
+         cualquiera con preferencia oscura. Misma fuente/clave que ThemeService.readInitialMode()
+         (ver core/theme/theme.service.ts), repetida aqui literal porque este script corre antes
+         de que Angular exista siquiera. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('ndmk-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          // localStorage bloqueado (modo privado estricto, etc.) -- se queda sin el atributo, cae
+          // al tema claro default de styles.css, igual que ThemeService en ese mismo escenario.
+        }
+      })();
+    </script>
+    <title>AutoDiscoveryIAM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Favicon/manifest/etc: NO hardcodeados aca a proposito -- una sola fuente de verdad, ver
+         SEO_CONFIG.favicons/manifest en
+         frugocorp_modules/parser-md-seo/config/seo.config.ts (PageSeoService los escribe en
+         <head> en el primer render, SSR incluido -- mismo mecanismo que description/JSON-LD). -->
+    <!-- Material Symbols (iconos de las 3 barras), variante "Outlined" -- como <link>, no como
+         @import en styles.css: un @import de una URL externa junto a los @import locales de
+         Tailwind/Material (que el bundler SI resuelve/inyecta en el sitio) rompe la regla de CSS
+         de que todos los @import deben ir antes que cualquier otra regla. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

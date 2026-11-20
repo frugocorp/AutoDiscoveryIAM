@@ -1,0 +1,1086 @@
+# ========================================================================
+# .editorconfig profesional y comentado para proyectos .NET
+# Incluye: dotnet format, StyleCop.Analyzers, Roslynator, Meziantou
+# Comentado línea por línea, enfocado en aprendizaje y buenas prácticas.
+# ========================================================================
+
+# Se toman como referencia los siguientes proyectos para la configuración
+# https://github.com/mehdihadeli/food-delivery-microservices/blob/main/.editorconfig
+# https://github.com/colindembovsky/dotnet-webapi-boilerplate/blob/main/.editorconfig  
+
+###############################################################################
+# -------------------------------- IMPORTANTE -------------------------------- 
+# -------------------------------- IMPORTANTE -------------------------------- 
+# -------------------------------- IMPORTANTE -------------------------------- 
+###############################################################################
+#
+# **********  ANTES DE EDITAR LEE TODO DE AQUÍ HASTA root = true **************
+#
+# Las categorias de los analizadores se activan como suggestion con
+# el objetivo de que durante el desarrollo se defina cual de las reglas es más util
+# y en su caso habilitando o deshabilitando la de un analizador u otro.
+# Ejemplo:
+# SA1028 de StyleCode y RCS1037 de Roslynator, cumplen con la misma función, pero
+# la configuración de EditorConfig (.editorconfig) lo corrige por si mismo
+# en este documento se deja habilitado RCS1037 como warning ya que revisando
+# el repositorio de Roslynator es mucho mas actualizado, y se deja como warning 
+# ya que aunque EditorConfig lo corrige al guardar (habilitar opción) queremos
+# evitar errores al compilar o en el CI/CD en github actions
+
+###############################################################################
+# Mecanismos para suprimir advertencias o reglas de análisis en C#
+###############################################################################
+#
+# SuppressMessageAttribute
+# Ideal para:Suprimir advertencias a nivel de método, clase, propiedad, ensamblado, etc.
+# Especialmente útil cuando la excepción está justificada y quieres dejar constancia explícita para revisiones futuras.
+# Ejemplo:
+# 
+# [SuppressMessage(
+#     "StyleCop.CSharp.NamingRules",
+#     "SA1313:ParameterNamesMustBeginWithLowerCaseLetter",
+#     Justification = "Los parámetros del record deben estar en PascalCase para cumplir con requisitos de interoperabilidad o convenciones externas.")]
+# public record UsuarioRecord(String NombreUsuario, int Edad);
+#
+# pragma warning disable/restore
+# Ideal para: Suprimir advertencias en bloques de código específicos, incluyendo dentro de métodos, ciclos, condiciones, etc.
+# Ejemplo:
+# public void MiMetodo()
+# {
+#     // Código normal
+#     #pragma warning disable MA0051
+#     // Bloque que genera la advertencia
+#     #pragma warning restore MA0051
+#     // Código normal
+# }
+
+###############################################################################
+# Template
+# Si te apoyas con alguna IA es indispensable pasarle primero el Template e 
+# indicarle que le pasarás el {CheckId} y su contenido documental pasandole
+# Promt 1: Te pasaré un Template, luego te pasaré {VersionAnalizer} | {CheckId}:{severity} | {Link} | {Contenido Link} | {helpers_text?}(Exception/Recomendation/Justification)
+# el VersionAnalizer, CheckId, Link y su Contenido del Link en ese estricto orden, la instrucción sería:
+# Promt 2: {VersionAnalizer} | {CheckId}:{severity} | {Link} | {Contenido Link} | {helpers_text?}
+###############################################################################
+#########
+# TEMPLATE
+# NOTA IMPORTANTE
+# No inventar, asumir ni suponer datos en ningún campo de este template.
+# Si no se encuentra información verificable o evidencia sustentable para un campo,
+# escribir explícitamente "null" (sin comillas) o "N/A" para indicar ausencia de información.
+# Esto garantiza trazabilidad, transparencia y evita la propagación de supuestos.
+# Elimina NOTA IMPORTANTE, unicamente dame la info a partir de # CheckId siempre en bloque de código
+# Tambien elimina los comentarios adicionales, solo deja el valor del campo.
+# Los helpers_text son opcionales, en caso de que se te pasen tienes que mejorar su redacción.
+#########
+# CheckId: {CheckId}
+# Status: {Activo/Inactivo/Obsoleto}
+# Analyzer: {Microsoft/StyleCop/Roslynator/Meziantou/Personalizado}
+# VersionAnalizer: {VersionAnalizer, puede servir como base para encontrar CSharpCompatibleWithVersionAnalizer y CSharpVersionWhenIntroducedDescription}
+# CSharpCompatibleWithVersionAnalizer: {CSharpCompatibleWithVersionAnalizer a partir de que versión de C# es compatible con VersionAnalizer} 
+# NetCompatibleWithVersionAnalizer: {NetCompatibleWithVersionAnalizer Versión de .Net donde se introdujo CSharpCompatibleWithVersionAnalizer}
+# VSCompatibleWithVersionAnalizer: {VSCompatibleWithVersionAnalizer que soportaba por primera vez CSharpCompatibleWithVersionAnalizer y .NetCompatibleWithVersionAnalizer}
+# Link: {URL de la documentación oficial}
+# Last reviewed: {AAAA-MM-DD, Fecha de la última revisión o edición de este bloque en el archivo .editorconfig, independientemente del estado de la regla}
+# LastMerged: {AAAA-MM-DD, Fecha del último merge/commit donde se revisó o actualizó la documentación de la regla}
+# TypeName: {TypeName u opción de configuración, no traducir}
+# Category: {Categoría principal, no traducir}
+# Subcategory: {Subcategoría o familia, si aplica}
+# DefaultOptionValue: {Valor por defecto de la opción, no traducir}
+# Cause: {Breve explicación de cuándo se dispara la regla, en español}
+# Description: {Descripción extendida de la regla y su propósito, en español}
+# CSharpVersionWhenIntroducedDescription: {CSharpVersionWhenIntroducedDescription a partir de que versión de C# se introdujo la regla descrita en Description} 
+# NetVersionWhenIntroducedDescription: {NetVersionWhenIntroducedDescription, Versión .Net donde se introdujo CSharpVersionWhenIntroducedDescription}
+# VisualStudioVersionWhenIntroducedDescription : {VSVersionWhenIntroducedDescription que soportaba por primera vez CSharpVersionWhenIntroducedDescription y .NetVersionWhenIntroducedDescription}
+# Example:
+#   // Incorrect
+#   {Ejemplo de código incorrecto}
+#   // Correct
+#   {Ejemplo de código correcto}
+# Exception: {Cuándo o por qué podría omitirse la regla, en español, si aplica}
+# Recomendation: {Recomendación de uso para el equipo/proyecto, en español}
+# Justification: {Motivo de la configuración actual, en español, si aplica}
+# dotnet_diagnostic.{CheckId}.severity = {severity, none|suggestion|warning|error}
+
+# Indica que este archivo es la raíz de configuración para el proyecto
+root = true
+
+###############################################################################
+# 🌐 Reglas generales para todos los archivos de texto.
+# 
+#
+###############################################################################
+[*]
+
+# Inserta una nueva línea al final de cada archivo si no existe.
+# Esto mejora la compatibilidad con herramientas de control de versiones y editores.
+insert_final_newline = true
+
+# Define la codificación predeterminada para todos los archivos.
+# 'utf-8' asegura compatibilidad con la mayoría de herramientas modernas y evita problemas de caracteres especiales.
+charset = utf-8
+
+# Define el tipo de salto de línea.
+# 'lf' (Line Feed) es el estándar en sistemas Unix/Linux y recomendado para proyectos multiplataforma.
+end_of_line = lf
+
+###############################################################################
+# 🌐 Configuración general para archivos C# (*.cs)
+# 
+#
+###############################################################################
+
+[*.cs]
+
+# Usar espacios en lugar de tabs
+indent_style = space
+
+# Número de espacios por nivel de indentación
+indent_size = 2
+
+# Tamaño del tabulador (normalmente igual a indent_size)
+tab_width = 2
+
+# Eliminar espacios al final de cada línea automáticamente
+trim_trailing_whitespace = true
+
+# Longitud máxima sugerida de línea (solo informativa para editores)
+max_line_length = 120
+
+# Ordenar using colocando los System primero
+dotnet_sort_system_directives_first = true
+
+###############################################################################
+# 🎨 Reglas de estilo aplicadas por dotnet format
+# https://learn.microsoft.com/es-es/dotnet/fundamentals/code-analysis/overview?tabs=net-9
+# https://github.com/dotnet/format
+# https://www.nuget.org/packages/dotnet-format - Ya se incluye en el SDK de .NET
+###############################################################################
+
+# Evitar mantener sentencias de una sola línea
+dotnet_style_preserve_single_line_statements = false
+
+# Evitar mantener bloques en una sola línea
+dotnet_style_preserve_single_line_blocks = false
+
+# Preferir 'var' para tipos primitivos conocidos (int, string, etc.)
+dotnet_style_var_for_built_in_types = true:suggestion
+
+# Preferir 'var' cuando el tipo es evidente por la asignación
+dotnet_style_var_when_type_is_apparent = true:suggestion
+
+# Preferir tipo explícito cuando el tipo no es evidente
+dotnet_style_var_elsewhere = false:suggestion
+
+# Usar llaves incluso para bloques de una sola línea (ej. if, else)
+csharp_prefer_braces = true:suggestion
+
+# Abrir llaves en la siguiente línea para todos los bloques
+csharp_new_line_before_open_brace = all
+
+# Indentar el contenido de las secciones 'case'
+csharp_indent_case_contents = true
+
+# Indentar las etiquetas 'case' y 'default' en switch
+csharp_indent_switch_labels = true
+
+###############################################################################
+# 🧩 StyleCop.Analyzers 1.2.0-beta.556 – SAxxxx / SXxxxx
+# https://github.com/DotNetAnalyzers/StyleCopAnalyzers
+# https://www.nuget.org/packages/StyleCop.Analyzers/
+# https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/Configuration.md
+# Severity Default Rules:
+# https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/StyleCop.Analyzers/StyleCop.Analyzers.CodeFixes/rulesets/StyleCopAnalyzersDefault.ruleset
+###############################################################################
+
+# Desactiva todo StyleCop
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+# Desactivar por categoria
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+# dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none  
+
+###############################################################################
+# 🧊 Spacing Rules (SA1000–SA1099)
+# Reglas de espaciado y espacios en blanco
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = suggestion
+
+# CheckId: SA1009
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1009.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1009ClosingParenthesisMustBeSpacedCorrectly
+# Category: Spacing Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando un paréntesis de cierre dentro de una instrucción C# no está espaciado correctamente.
+# Description: Una infracción de esta regla ocurre cuando el paréntesis de cierre dentro de una instrucción no tiene el espaciado adecuado. El paréntesis de cierre nunca debe estar precedido por un espacio en blanco. Generalmente, debe ir seguido de un solo espacio, salvo que termine un cast o sea seguido por ciertos operadores (signos positivos, negativos, dos puntos, etc.). Si el paréntesis de cierre es seguido por un espacio en blanco, el siguiente carácter no debe ser otro paréntesis, corchete, punto y coma o coma.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   if (true ) { }
+#   // Correct
+#   if (true) { }
+# Exception: Puede omitirse si existe una justificación técnica documentada y aprobada por el equipo.
+# Recomendation: Asegurar que los paréntesis de cierre estén correctamente espaciados según las reglas. Utilizar herramientas automáticas de formateo para mantener la consistencia.
+# Justification: Revisado y validado por el equipo.
+dotnet_diagnostic.SA1009.severity = warning
+
+# CheckId: SA1024
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1024.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1024ColonsMustBeSpacedCorrectly
+# Category: Spacing Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando un dos puntos (:) dentro de un elemento C# no está espaciado correctamente.
+# Description: Una infracción de esta regla ocurre cuando el espaciado alrededor de un dos puntos no es el correcto. El espaciado depende del tipo de dos puntos y su uso. En declaraciones de elementos debe tener un solo espacio a cada lado, salvo que sea el primer o último carácter de la línea. En etiquetas o sentencias case, debe ir seguido de espacio o ser el último carácter, pero nunca precedido de espacio. En interpolación de cadenas, no debe tener espacios antes. En condicionales, un solo espacio a cada lado, salvo que sea el primer o último carácter.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   public class MyClass:BaseClass{}
+#   // Correct
+#   public class MyClass : BaseClass { }
+# Exception: Puede omitirse si existe una justificación técnica documentada y aprobada por el equipo.
+# Recomendation: Asegurar que los dos puntos estén correctamente espaciados según las reglas. Utilizar herramientas automáticas de formateo para mantener la consistencia.
+# Justification: Revisado y validado por el equipo.
+# dotnet_diagnostic.SA1024.severity = warning
+
+# CheckId: SA1028
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1028.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1028CodeMustNotContainTrailingWhitespace
+# Category: Spacing Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando una línea de código termina con uno o más caracteres de espacio en blanco (espacio, tabulación u otros) antes del carácter de fin de línea.
+# Description: Una infracción de esta regla ocurre cuando una línea de código finaliza con cualquier tipo de espacio en blanco que no sea el carácter de fin de línea. El exceso de espacios puede mostrarse en editores con visualización de espacios, causar cambios innecesarios al formatear el documento o ser resaltado por herramientas de comparación de código para fomentar su eliminación.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   int x = 5;␣
+#   // Correct
+#   int x = 5;
+# Exception: En este proyecto, dotnet format ya se encarga automáticamente de eliminar espacios en blanco al final de línea.
+# Recomendation: Mantener el código sin espacios en blanco al final de línea. Se recomienda usar herramientas automáticas como dotnet format para garantizar el cumplimiento.
+# Justification: dotnet format ya se encarga de esto.
+dotnet_diagnostic.SA1028.severity = none
+
+###############################################################################
+# ✒️ Readability Rules (SA1100–SA1199)
+# Mejora la comprensión del código
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = suggestion
+
+# CheckId: SA1101
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1101.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1101PrefixLocalCallsWithThis
+# Category: Readability Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando una llamada a un miembro de instancia de la clase local o de una clase base no está precedida por 'this.' dentro de un archivo de código C#.
+# Description: Se infringe esta regla cuando el código contiene una llamada a un miembro de instancia de la clase local o de una clase base sin el prefijo 'this.'. La excepción ocurre cuando existe una sobreescritura local de un miembro de la clase base y se desea llamar directamente al miembro de la clase base usando 'base.'. StyleCop desaconseja el uso de guiones bajos o m_ para campos privados, favoreciendo el prefijo 'this.' para distinguir claramente miembros de instancia y estáticos, y facilitar el uso de IntelliSense.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   valor = MiMetodo();
+#   // Correct
+#   this.valor = this.MiMetodo();
+# Exception: Desactivada para permitir el uso de campos privados con guión bajo (_campo), estilo común en C# moderno.
+# Recomendation: Prefijar llamadas a miembros de instancia con 'this.' para mejorar la legibilidad, salvo cuando el equipo acuerde un estilo alternativo documentado.
+# Justification: Desactivada para permitir el uso de campos privados con guión bajo (_campo), estilo común en C# moderno.
+dotnet_diagnostic.SA1101.severity = none
+
+###############################################################################
+# 🔃 Ordering Rules (SA1200–SA1299)
+# Orden de usings, miembros, accesores
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = suggestion
+
+# CheckId: SA1200
+# TypeName: SA1200UsingDirectivesMustBePlacedCorrectly
+# Category: Ordering Rules
+# Severity Default: Warning
+# Cause: Los using no están ubicados en el lugar recomendado (fuera o dentro del namespace).
+# Description: Fuerza el orden y ubicación de los using según convención StyleCop.
+# Example: using fuera del namespace.
+# Excepción: Desactivada porque el orden de usings lo gestiona dotnet format.
+# Recomendation: Mantener desactivada si se usa dotnet format para el orden de using.
+dotnet_diagnostic.SA1200.severity = none
+
+###############################################################################
+# 🏷️ Naming Rules (SA1300–SA1399)
+# Convenciones de nombres para clases, campos, interfaces
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = suggestion
+
+# CheckId: SA1309
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1309.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1309FieldNamesMustNotBeginWithUnderscore
+# Category: Naming Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando el nombre de un campo en C# comienza con un guión bajo.
+# Description: Se infringe esta regla cuando el nombre de un campo inicia con un guión bajo. StyleCop desaconseja el uso de guiones bajos, m_, etc., para marcar campos, favoreciendo el prefijo 'this.' para identificar miembros de instancia y diferenciarlos de los estáticos. Si el campo debe coincidir con un nombre de Win32 o COM, debe ubicarse en una clase NativeMethods, en cuyo caso la regla no aplica.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   private int _contador;
+#   // Correct
+#   private int contador;
+# Exception: Puede omitirse si el campo está dentro de una clase NativeMethods para interoperabilidad con Win32 o COM.
+# Recomendation: Evitar el uso de guiones bajos al inicio de nombres de campos, salvo en casos de interoperabilidad documentados. Preferir estilos acordados y consistentes en el equipo.
+# Justification: Desactivada para permitir el uso de campos privados con guión bajo (_campo), estilo común y aceptado en C# moderno.
+dotnet_diagnostic.SA1309.severity = none
+
+# CheckId: SA1313
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1313.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1313ParameterNamesMustBeginWithLowerCaseLetter
+# Category: Naming Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando el nombre de un parámetro en C# no comienza con una letra minúscula.
+# Description: Se infringe esta regla cuando el nombre de un parámetro no inicia con una letra minúscula. Se exceptúan los parámetros lambda llamados _ y __, usados como marcadores de posición. Para coincidencias con nombres de Win32 o COM, el parámetro debe estar en una clase NativeMethods para que la regla no aplique.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   void Metodo(int Parametro) { }
+#   // Correct
+#   void Metodo(int parametro) { }
+# Exception: Puede omitirse si el parámetro está en una clase NativeMethods para interoperabilidad con Win32 o COM, o si es un parámetro lambda llamado _ o __.
+# Recomendation: Nombrar los parámetros iniciando con minúscula, salvo excepciones documentadas y aprobadas por el equipo.
+# Justification: Se recomienda mantener la advertencia activa para promover la consistencia en el nombrado de parámetros.
+dotnet_diagnostic.SA1313.severity = warning
+
+
+###############################################################################
+# 🧹 Maintainability Rules (SA1400–SA1499)
+# Evita código difícil de mantener o problemático
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = suggestion
+
+# CheckId: SA1401
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1401.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1401FieldsMustBePrivate
+# Category: Maintainability Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando un campo dentro de una clase C# tiene un modificador de acceso distinto de private.
+# Description: Se infringe esta regla cuando un campo en una clase tiene acceso no privado. Por mantenibilidad, se recomienda exponer campos mediante propiedades y declarar los campos siempre como privados, permitiendo cambiar la implementación interna sin afectar la interfaz pública. Los campos en structs pueden tener cualquier nivel de acceso. Los campos static readonly están exentos, ya que suelen representar constantes cuando no se puede usar const.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   public int contador;
+#   // Correct
+#   private int contador;
+# Exception: No aplica para campos static readonly ni para campos dentro de structs.
+# Recomendation: Declarar todos los campos como privados y exponerlos mediante propiedades cuando sea necesario, salvo excepciones documentadas.
+# Justification: Se recomienda mantener la advertencia activa para promover buenas prácticas de encapsulamiento y mantenibilidad.
+dotnet_diagnostic.SA1401.severity = warning
+
+# CheckId: SA1413
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1413.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1413UseTrailingCommasInMultiLineInitializers
+# Category: Maintainability Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando la última instrucción en un inicializador o lista multilínea de C# no termina con una coma.
+# Description: Se infringe esta regla cuando la última instrucción de un inicializador o lista multilínea carece de una coma al final. El uso de la coma final facilita la revisión de código a largo plazo, minimiza los cambios innecesarios al agregar o reordenar elementos y mantiene la trazabilidad de los autores en herramientas como git blame. Aplica también a listas separadas por comas, como miembros de enum.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   var x = new Barnacle
+#   {
+#       Age = 100,
+#       Height = 0.2M,
+#       Weight = 0.88M
+#   };
+#   // Correct
+#   var x = new Barnacle
+#   {
+#       Age = 100,
+#       Height = 0.2M,
+#       Weight = 0.88M,
+#   };
+# Exception: No aplica a inicializadores de una sola línea o cuando el equipo justifique explícitamente la omisión.
+# Recomendation: Usar siempre coma al final en inicializadores y listas multilínea para facilitar el mantenimiento y la revisión de código.
+# Justification: Se recomienda mantener la advertencia activa para promover buenas prácticas de mantenibilidad y control de cambios.
+dotnet_diagnostic.SA1413.severity = warning
+[**/Migrations/*.cs]
+dotnet_diagnostic.SA1413.severity = none
+dotnet_diagnostic.CA1861.severity = none
+[*.cs]
+
+###############################################################################
+# 🎨 Layout Rules (SA1500–SA1599)
+# Formato: sangría, llaves, espaciado, etc.
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = suggestion
+
+# CheckId: SA1500
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1500.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1500BracesForMultiLineStatementsMustNotShareLine
+# Category: Layout Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando la llave de apertura o cierre en una instrucción, elemento o expresión C# no está colocada en una línea propia.
+# Description: Se infringe esta regla cuando la llave de apertura o cierre en una instrucción, elemento o expresión no está en una línea independiente. Por ejemplo, colocar la llave de apertura en la misma línea que el statement o la de cierre junto a otra instrucción. El comportamiento puede variar según la configuración allowDoWhileOnClosingBrace en stylecop.json.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   lock (this) {
+#       return this.value;
+#   }
+#   // Correct
+#   lock (this)
+#   {
+#       return this.value;
+#   }
+# Exception: Puede omitirse si existe una justificación técnica documentada y aprobada por el equipo, o si la configuración del proyecto lo permite explícitamente.
+# Recomendation: Colocar siempre las llaves de apertura y cierre en líneas independientes para mejorar la legibilidad y mantener la consistencia del código.
+# Justification: Se recomienda mantener la advertencia activa para promover buenas prácticas de formato y legibilidad.
+dotnet_diagnostic.SA1500.severity = warning
+
+# CheckId: SA1501
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1501.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1501StatementMustNotBeOnSingleLine
+# Category: Layout Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando una instrucción en C# que contiene llaves de apertura y cierre se escribe completamente en una sola línea.
+# Description: Se infringe esta regla cuando una instrucción envuelta en llaves de apertura y cierre se encuentra en una sola línea. Para cumplir la regla, la instrucción debe estar en varias líneas, con cada llave en su propia línea.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   lock (this) { return this.value; }
+#   // Correct
+#   lock (this)
+#   {
+#       return this.value;
+#   }
+# Exception: Puede omitirse si existe una justificación técnica documentada y aprobada por el equipo, o si la configuración del proyecto lo permite explícitamente.
+# Recomendation: Escribir las instrucciones que usen llaves en varias líneas, colocando cada llave en una línea independiente para mejorar la legibilidad y mantener la consistencia.
+# Justification: Se recomienda mantener la advertencia activa para promover buenas prácticas de formato y legibilidad.
+dotnet_diagnostic.SA1501.severity = warning
+
+# CheckId: SA1503
+# Status: Activo
+# Analyzer: StyleCop
+# VersionAnalizer: 1.2.0-beta.556
+# CSharpCompatibleWithVersionAnalizer: null
+# NetCompatibleWithVersionAnalizer: null
+# VSCompatibleWithVersionAnalizer: null
+# Link: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1503.md
+# Last reviewed: 2025-05-21
+# LastMerged: null
+# TypeName: SA1503BracesMustNotBeOmitted
+# Category: Layout Rules
+# Subcategory: null
+# DefaultOptionValue: null
+# Cause: Esta regla se dispara cuando se omiten las llaves de apertura y cierre en una instrucción de C#.
+# Description: Se infringe esta regla cuando una instrucción (por ejemplo, if, while, for) no utiliza llaves. Aunque es legal en C#, StyleCop exige siempre el uso de llaves para mejorar la legibilidad y mantenibilidad. Omitirlas puede inducir errores al agregar nuevas instrucciones, ya que la estructura visual puede no coincidir con la lógica real del código.
+# CSharpVersionWhenIntroducedDescription: null
+# NetVersionWhenIntroducedDescription: null
+# VisualStudioVersionWhenIntroducedDescription : null
+# Example:
+#   // Incorrect
+#   if (true)
+#       return this.value;
+#   // Correct
+#   if (true)
+#   {
+#       return this.value;
+#   }
+# Exception: Puede omitirse solo si existe una justificación técnica documentada y aprobada por el equipo.
+# Recomendation: Usar siempre llaves en instrucciones condicionales y de bucle, incluso si contienen una sola línea, para evitar errores y mejorar la claridad del código.
+# Justification: Se recomienda mantener la advertencia activa para reforzar la mantenibilidad y prevenir errores sutiles.
+dotnet_diagnostic.SA1503.severity = suggestion
+
+# CheckId: SA1506
+# Category: LayoutRules
+# Severity Default: Warning
+# Cause: Un encabezado de documentación de un elemento va seguido de una línea en blanco.
+# Description: Prohíbe líneas en blanco después de los encabezados de documentación para mantener la coherencia visual y la legibilidad.
+# Example:
+#   /// <summary>
+#   /// Gets a value indicating whether the control is enabled.
+#   /// </summary>
+#
+#   public bool Enabled
+#   {
+#       get { return this.enabled; }
+#   }
+# Exception: Puede omitirse la advertencia si existe una convención de equipo explícita, aunque no es recomendable.
+# Recomendation: Mantener activa para casos específicos de documentación. Aunque RCS0063 valida líneas vacías en general, SA1506 es específica para encabezados de documentación.
+dotnet_diagnostic.SA1506.severity = warning
+
+# CheckId: SA1507
+# TypeName: SA1507CodeMustNotContainMultipleBlankLinesInARow
+# Category: Layout Rules
+# Severity Default: Warning
+# Cause: Hay líneas en blanco repetidas.
+# Description: No debe haber líneas en blanco consecutivas en el código.
+# Example: Dos o más líneas vacías seguidas.
+# Excepción: Ninguna.
+# Recomendation: Sugerida para mantener el código limpio.
+dotnet_diagnostic.SA1507.severity = warning
+
+# CheckId: SA1516
+# TypeName: SA1516ElementsMustBeSeparatedByBlankLine
+# Category: Layout Rules
+# Severity Default: Warning
+# Cause: No hay línea en blanco entre miembros.
+# Description: Obliga a separar miembros (métodos, propiedades, etc.) con una línea en blanco.
+# Example: 
+# public int X;
+#
+# public int Y;
+# Excepción: Ninguna.
+# Recomendation: Sugerida para mejorar la organización visual del código.
+dotnet_diagnostic.SA1516.severity = suggestion
+
+###############################################################################
+# 📄 Documentation Rules (SA1600–SA1699)
+# Comentarios XML para clases, métodos, propiedades, etc.
+###############################################################################
+
+# Desactivamos todas las reglas de esta categoría para ir personalizando
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = suggestion
+
+# CheckId: SA1600
+# TypeName: SA1600ElementsMustBeDocumented
+# Category: Documentation Rules
+# Severity Default: Warning
+# Cause: Falta documentación XML en elementos públicos.
+# Description: Obliga a documentar con comentarios XML todas las clases, métodos y propiedades públicas.
+# Example: /// <summary>Mi método</summary>
+# Excepción: Desactivada para no requerir documentación XML obligatoria.
+# Recomendation: Mantener desactivada si se prefiere documentación opcional.
+dotnet_diagnostic.SA1600.severity = suggestion
+
+# CheckId: SA1642
+# TypeName: SA1642ConstructorSummaryDocumentationMustBeginWithStandardText
+# Category: Documentation Rules
+# Severity Default: Warning
+# Cause: El comentario de resumen (summary) de un constructor no inicia con el texto estándar recomendado.
+# Description: Obliga a que la documentación XML de los constructores comience con "Initializes a new instance of the {nombreClase} class." para mantener coherencia y claridad en la documentación pública.
+# Example:
+#   /// <summary>
+#   /// Initializes a new instance of the MiClase class.
+#   /// </summary>
+# Excepción: Puede desactivarse si el equipo prefiere un estilo de documentación distinto o más flexible.
+# Recomendation: Mantener desactivada si la documentación estándar no es requerida por el equipo.
+# Justification: Se está documentando con texto libre.
+dotnet_diagnostic.SA1642.severity = none
+
+###############################################################################
+# 🔧 Roslynator.Analyzers – RCSxxxx
+# Diagnósticos configurables desde dotnet_diagnostic (se ejecutan en build/CI)
+# https://github.com/dotnet/roslynator
+# https://www.nuget.org/packages/roslynator.analyzers/
+# https://josefpihrt.github.io/docs/roslynator/analyzers
+# Severity Enum
+# https://josefpihrt.github.io/docs/roslynator/ref/Roslynator/Testing/TestOptions/WithAllowedCompilerDiagnosticSeverity/
+# Severity Levels MS
+# https://learn.microsoft.com/en-us/visualstudio/code-quality/use-roslyn-analyzers?view=vs-2022#severity-levels
+###############################################################################
+
+# Activar todas las reglas de Roslynator como sugerencia
+dotnet_analyzer_diagnostic.category-roslynator.severity = suggestion
+
+# CheckId: RCS1036
+# Category: Formatting
+# Severity Default: Info
+# Cause: Se detecta una línea en blanco innecesaria en el código fuente.
+# Description: Esta regla detectaba líneas vacías redundantes, pero está obsoleta.
+# Example:
+#   public class Foo
+#   {
+#
+#       private string _f;
+#
+#
+#       public bool Bar()
+#       {
+#
+#           return false;
+#
+#       }
+#   }
+# Exception: No aplica, ya que la regla está obsoleta.
+# Recomendation: Se desactiva porque la validación se realiza ahora con SA1507 de StyleCop.
+dotnet_diagnostic.RCS1036.severity = none
+
+# CheckId: RCS1037
+# TypeName: RCS1037RemoveTrailingWhiteSpace
+# Category: Analyzers
+# Severity Default: Info (suggestion)
+# Cause: El código contiene espacios en blanco al final de una línea.
+# Description: Recomienda eliminar los espacios o tabulaciones al final de las líneas para mantener el código limpio y consistente.
+# Example:
+#   // Incorrecto (espacio al final)
+#   int x = 1;␣
+#   // Correcto
+#   int x = 1;
+# Excepción: No aplica.
+# Recomendation: Mantener activa para asegurar un formato de código profesional y evitar cambios innecesarios en control de versiones.
+dotnet_diagnostic.RCS1037.severity = warning
+
+# CheckId: RCS1213
+# TypeName: RCS1213RemoveUnusedMemberDeclaration
+# Category: Analyzers
+# Severity Default: Info (suggestion)
+# Cause: Hay miembros declarados en el código que no se utilizan en ninguna parte.
+# Description: Recomienda eliminar miembros (métodos, propiedades, campos, etc.) que no tienen referencias para mantener el código limpio y fácil de mantener.
+# Example:
+#   // Incorrecto
+#   private void MetodoNoUsado() { }
+# Excepción: Puede omitirse en código generado o para miembros reservados para futuras implementaciones.
+# Recomendation: Sugerida para mantener el código libre de elementos innecesarios.
+dotnet_diagnostic.RCS1213.severity = warning
+
+# CheckId: RCS1174
+# Status: Activo
+# Analyzer: Roslynator.Analyzers
+# Link: https://josefpihrt.github.io/docs/roslynator/analyzers/RCS1174/
+# Last reviewed: 2025-05-20
+# LastMerged: null
+# TypeName: RCS1174RemoveRedundantAsyncAwait
+# Category: Performance
+# Subcategory: Async
+# C#IntroducedVersion: -
+# .NetIntroducedVersion: -
+# VisualStudioIntroducedVersion: VS 2022, VS Code, Open VSX
+# Default option value: disabled by default
+# Cause: El uso de async/await es redundante si el método solo retorna directamente el resultado de otra tarea asíncrona.
+# Description: Esta regla detecta y sugiere eliminar el uso innecesario de async/await cuando un método asíncrono simplemente retorna el resultado de otra llamada asíncrona, mejorando la claridad y el rendimiento.
+# Example:
+#   // Incorrecto
+#   public static async Task<object> FooAsync()
+#   {
+#       return await GetAsync().ConfigureAwait(false);
+#   }
+#   // Correcto
+#   public static Task<object> FooAsync()
+#   {
+#       return GetAsync();
+#   }
+# Exception: Puede omitirse la corrección si se requiere await para manejo de excepciones o lógica adicional.
+# Recommendation: Elimina async/await redundantes para mejorar la claridad y eficiencia, excepto cuando sea necesario para el control de flujo o manejo de errores.
+# Justification: Se desactiva ya que agregar las palabras reservadas async/await es la forma recomendada, segura, y más legible para trabajar con operaciones asíncronas, pero debe evitarse el uso redundante.
+dotnet_diagnostic.RCS1174.severity = none
+
+# CheckId: RCS1220
+# TypeName: RCS1220UsePatternMatchingInsteadOfCombinationOfIsOperatorAndCastOperator
+# Category: Analyzers
+# Severity Default: Info (suggestion)
+# Cause: Se utiliza una combinación del operador 'is' y un casteo explícito en vez de pattern matching.
+# Description: Recomienda usar pattern matching para simplificar el código y mejorar la legibilidad cuando se verifica el tipo y luego se realiza un cast.
+# Example:
+#   // Incorrecto
+#   if (x is T && Foo((T)x))
+#   {
+#   }
+#   // Correcto
+#   if (x is T y && Foo(y))
+#   {
+#   }
+# Excepción: Puede omitirse si se requiere compatibilidad con versiones anteriores a C# 7.0.
+# Recomendation: Mantener activa para aprovechar las características modernas del lenguaje y mejorar la claridad.
+dotnet_diagnostic.RCS1220.severity = suggestion
+
+
+# CheckId: RCS1077
+# TypeName: RCS1077OptimizeLinqMethodCall
+# Category: Analyzers
+# Severity Default: Info
+# Cause: Se utiliza una combinación de métodos LINQ que puede ser optimizada.
+# Description: Sugiere reemplazar combinaciones de métodos LINQ por alternativas más directas y eficientes, como usar Any(predicate) en lugar de Where(predicate).Any().
+# Example:
+#   // Incorrecto: Buscar si algún post es publicado usando Where + Any
+#   bool hayPublicados = posts.Where(p => p.IsPublished).Any();
+#   // Correcto: Usar Any con predicado directamente
+#   bool hayPublicados = posts.Any(p => p.IsPublished);
+# Excepción: Puede omitirse si la claridad del flujo es prioritaria en casos específicos.
+# Recomendation: Sugerida para mejorar la eficiencia y claridad en consultas LINQ.
+dotnet_diagnostic.RCS1077.severity = warning
+
+# CheckId: RCS1118
+# TypeName: RCS1118MarkLocalVariableAsConst
+# Category: Analyzers
+# Severity Default: Info
+# Cause: Una variable local puede ser declarada como const porque su valor no cambia.
+# Description: Recomienda marcar variables locales como const cuando su valor es constante, para mejorar la claridad, seguridad y optimización del código.
+# Example:
+#   // Incorrecto
+#   string s = "a";
+#   string s2 = s + "b";
+#   // Correcto
+#   const string s = "a";
+#   string s2 = s + "b";
+# Excepción: Puede omitirse si la variable debe ser reasignada en el futuro.
+# Recomendation: Mantener activa para promover buenas prácticas y evitar variables mutables innecesarias.
+dotnet_diagnostic.RCS1118.severity = warning
+
+# CheckId: RCS1129
+# Status: Activo
+# Analyzer: Roslynator
+# Link: https://josefpihrt.github.io/docs/roslynator/analyzers/RCS1129/
+# Last reviewed: null
+# LastMerged: null
+# TypeName: RCS1129
+# Category: null
+# Subcategory: null
+# C#IntroducedVersion: null
+# .NetIntroducedVersion: null
+# VisualStudioIntroducedVersion : null
+# Default option value: Hidden
+# Cause: Inicialización redundante de un campo al valor predeterminado de su tipo.
+# Description: Indica que un campo está siendo inicializado explícitamente a su valor predeterminado, lo cual es innecesario porque el compilador ya lo hace automáticamente.
+# Example:
+#   // Incorrect
+#   private bool _f = false;
+#   // Correct
+#   private bool _f;
+# Exception: null
+# Recomendation: Eliminar inicializaciones explícitas a valores predeterminados, salvo que se requiera para mejorar la claridad o el entendimiento visual del código por parte del equipo.
+# Justification: Mismo efecto que CA1805; en este proyecto también se decide desactivar, ya que se prefiere declarar valores predeterminados para facilitar el entendimiento visual del código.
+dotnet_diagnostic.RCS1129.severity = none
+
+###############################################################################
+# 🧠 Roslynator.Refactorings – RRxxxx
+# Refactorizaciones disponibles en el IDE (se configuran con roslynator_refactoring.*)
+# https://github.com/dotnet/roslynator
+# https://www.nuget.org/packages/roslynator.analyzers/
+# https://josefpihrt.github.io/docs/roslynator/refactorings
+###############################################################################
+
+# Todas estan activas por default, en caso de que se quiera desactivar alguna:
+
+# Desactivar sugerencia de convertir propiedad en método
+# roslynator_refactoring.RR0012.enabled = false
+
+###############################################################################
+# 🚀 Meziantou.Analyzer – Buenas prácticas modernas
+# https://github.com/meziantou/Meziantou.Analyzer
+# https://www.nuget.org/packages/Meziantou.Analyzer/
+# Severity Default Rules:
+# https://github.com/meziantou/Meziantou.Analyzer/tree/main/docs
+###############################################################################
+
+# Para desactivar todas las reglas de Meziantou 
+# Hay que agregar esto al *.csproj o *.props segun sea el caso.
+# Según la documentación, solo acepta Default y None:
+#
+# <!-- Meziantou: se desactivan todas las reglas para activar las necesarias -->
+# <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
+
+# CheckId: MA0016
+# TypeName: MA0016PreferCollectionAbstraction
+# Category: Design
+# Severity Default: Warning
+# Cause: Se utiliza una implementación concreta de colección (ej. List<T>, Dictionary<TKey, TValue>) en la API pública en vez de una abstracción (ej. IEnumerable<T>, ICollection<T>).
+# Description: Promueve el uso de interfaces de colección en firmas públicas para mejorar la flexibilidad y mantenibilidad del código.
+# Example:
+#   public List<string> Prop { get; set; } // non-compliant
+#   public IList<string> Prop { get; set; } // ok
+# Excepción: Puede omitirse en APIs internas o cuando se requiere una funcionalidad específica de la implementación.
+# Recomendation: Usar interfaces en parámetros y retornos públicos, y limitar implementaciones concretas al ámbito privado.
+dotnet_diagnostic.MA0016.severity = warning
+
+# CheckId: MA0032
+# TypeName: MA0032UseCancellationTokenOverload
+# Category: Usage
+# Severity Default: Info (none)
+# Cause: El método asíncrono llamado tiene una sobrecarga que acepta un CancellationToken, pero no se utiliza.
+# Description: Promueve el uso de métodos asíncronos que aceptan CancellationToken para permitir la cancelación adecuada de operaciones.
+# Example:
+#   // Incorrecto
+#   await httpClient.GetAsync("url");
+#   // Correcto
+#   await httpClient.GetAsync("url", cancellationToken);
+# Excepción: Puede omitirse si no existe una sobrecarga con CancellationToken o en código donde la cancelación no es relevante.
+# Recomendation: Siempre que sea posible, utiliza la versión del método que acepte CancellationToken para mejorar la robustez y control del flujo asíncrono.
+dotnet_diagnostic.MA0032.severity = warning
+
+# CheckId: MA0051
+# TypeName: MA0051MethodIsTooLong
+# Category: Design
+# Severity Default: Warning
+# Cause: El método excede la cantidad máxima recomendada de líneas o sentencias.
+# Description: Limita la longitud de los métodos para mejorar la legibilidad, mantenibilidad y facilitar las pruebas.
+# Example:
+#   // Incorrecto: método con más de XX líneas o YY sentencias.
+#   void MetodoLargo() {
+#       // ... muchas líneas o sentencias ...
+#   }
+# Excepción: Puede omitirse usando SuppressMessageAttribute, pero solo en caso de no poder refactorizar más.
+# Recomendation: Refactoriza métodos largos dividiéndolos en funciones más pequeñas y reutilizables.
+
+dotnet_diagnostic.MA0051.severity = warning
+# Máximo de líneas permitidas por método (default: 60)
+MA0051.maximum_lines_per_method = 50
+# Máximo de sentencias permitidas por método (default: 40) 
+MA0051.maximum_statements_per_method = 30
+# Considerar funciones locales al contar sentencias (default: false)  
+MA0051.skip_local_functions = false
+# Parametros para EndPoints
+[**/*EndPoint.cs]
+MA0051.maximum_lines_per_method = 200
+MA0051.maximum_statements_per_method = 100
+[**/*Middleware.cs]
+MA0051.maximum_lines_per_method = 100
+MA0051.maximum_statements_per_method = 50
+[**/*Tests.cs]
+MA0051.maximum_lines_per_method = 200
+MA0051.maximum_statements_per_method = 100
+[**/*Configuration.cs]
+MA0051.maximum_lines_per_method = 100
+MA0051.maximum_statements_per_method = 50
+[**/Migrations/*.cs]
+dotnet_diagnostic.MA0051.severity = none
+dotnet_diagnostic.CA1861.severity = none
+[**/Seeds/*.cs]
+dotnet_diagnostic.MA0051.severity = none
+dotnet_diagnostic.CA1861.severity = none
+[*.cs]
+# VisualStudioIntroducedVersion : null
+# Default option value: none
+# Cause: Un campo de una clase se inicializa explícitamente al valor predeterminado del tipo de ese campo.
+# Description: El entorno de ejecución de .NET inicializa todos los campos de tipos de referencia a sus valores predeterminados antes de ejecutar el constructor. Inicializar explícitamente un campo a su valor predeterminado es redundante, agrega costos de mantenimiento y puede degradar el rendimiento.
+# Example:
+#   // Incorrect
+#   int _value1 = 0;
+#   // Correct
+#   int _value1;
+# Exception: Esta advertencia se puede suprimir, ya que solo señala código potencialmente innecesario y no afecta la funcionalidad.
+# Recomendation: Eliminar inicializaciones explícitas a valores predeterminados, excepto cuando se requiera para mejorar la claridad o el entendimiento visual del código por parte del equipo.
+# Justification: Por default se encuentra deshabilitada en .NET 9; en este proyecto también se decide desactivar, ya que se prefiere declarar valores predeterminados para facilitar el entendimiento visual del código.
+dotnet_diagnostic.CA1805.severity = none
+
+###############################################################################
+# 🛠️ Microsoft Roslyn IDE Analyzers – IDExxxx
+# Diagnósticos integrados del compilador y el IDE (Visual Studio, VS Code, Rider)
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/language-rules
+###############################################################################
+
+# Falta ver como hacer que todos los CA, CS e IDE se pongan por fefault en suggestion
+
+dotnet_diagnostic.IDE0035.severity = suggestion
+dotnet_diagnostic.CS0162.severity = suggestion
+dotnet_diagnostic.CS1591.severity = suggestion
+
+dotnet_diagnostic.CA1707.severity = none
+
+# CheckId: IDE0079
+# Status: Activo
+# Analyzer: Microsoft
+# Link: https://learn.microsoft.com/es-mx/dotnet/fundamentals/code-analysis/style-rules/IDE0079
+# Last reviewed: 2025-05-19
+# LastMerged: null
+# TypeName: dotnet_remove_unnecessary_suppression_exclusions
+# Category: CodeQuality
+# Subcategory: Reglas de código innecesarias (preferencias de supresión)
+# C#IntroducedVersion: null
+# .NetIntroducedVersion: null
+# VisualStudioIntroducedVersion : null
+# Default option value: none
+# Cause: Existen directivas pragma o atributos SuppressMessageAttribute innecesarios en el código fuente.
+# Description: Esta regla marca las supresiones pragma y SuppressMessageAttribute que ya no son necesarias, ayudando a mantener el código limpio y sin supresiones redundantes.
+# Example:
+#   // Incorrect
+#   #pragma warning disable IDE0051
+#   private int UsedMethod() => 0;
+#   #pragma warning restore IDE0051
+#   // Correct
+#   // (No hay supresión innecesaria si el miembro se usa o la regla ya no aplica)
+# Exception: Puede omitirse si por alguna razón específica se requiere mantener la supresión aunque ya no sea necesaria, aunque no es recomendable.
+# Recomendation: Mantener activa para asegurar que las supresiones en el código sean realmente necesarias y evitar acumulación de código muerto o redundante.
+# Justification: Lo mantenemos desactivado ya que ocupamos las preferencias de supresión porque tenemos varios analizadores.
+dotnet_diagnostic.IDE0079.severity = none
+
+# CheckId: IDE0044
+# Status: Activo
+# Analyzer: Microsoft
+# Link: https://learn.microsoft.com/es-mx/dotnet/fundamentals/code-analysis/style-rules/IDE0044
+# Last reviewed: 2025-05-19
+# LastMerged: null
+# TypeName: dotnet_style_readonly_field
+# Category: Style
+# Subcategory: Language rules (field preferences)
+# C#IntroducedVersion: null
+# .NetIntroducedVersion: null
+# VisualStudioIntroducedVersion : 2017
+# Default option value: true
+# Cause: Un campo privado es inicializado (en línea o en un constructor) y nunca se reasigna, pero no está marcado como readonly.
+# Description: Esta regla de estilo requiere que los campos privados que solo se asignan en su declaración o en el constructor estén marcados como readonly, para mejorar la inmutabilidad y claridad del código.
+# Example:
+#   // Incorrect
+#   class MyClass
+#   {
+#       private int _daysInYear = 365;
+#   }
+#   // Correct
+#   class MyClass
+#   {
+#       private readonly int _daysInYear = 365;
+#   }
+# Exception: Puede omitirse si el campo debe ser reasignado después de la construcción, o si existen restricciones específicas del diseño.
+# Recomendation: Mantener activa para fomentar la inmutabilidad y la claridad en los campos privados.
+# Justification: El equipo prioriza la inmutabilidad y las buenas prácticas de diseño orientado a objetos.
+dotnet_diagnostic.IDE0044.severity = warning
+
+# CheckId: IDE0290
+# Status: Activo
+# Analyzer: Microsoft
+# Link: https://learn.microsoft.com/es-mx/dotnet/fundamentals/code-analysis/style-rules/ide0290
+# LastReviewed: 2025-05-19
+# LastMerged: null
+# TypeName: csharp_style_prefer_primary_constructors
+# Category: Estilo
+# Subcategory: Reglas de lenguaje (preferencias de bloque de código)
+# C#IntroducedVersion: 12
+# .NetIntroducedVersion: 8
+# VisualStudioIntroducedVersion : 2022 v17.8
+# Default option value: true
+# Cause: La clase define un constructor separado cuando podría utilizar un constructor principal.
+# Description: Esta regla marca las clases que pueden usar un constructor principal en lugar de una definición de constructor independiente. Para definir un constructor principal, coloque los parámetros del constructor entre paréntesis siguiendo el nombre del tipo. Un constructor principal indica que estos parámetros son necesarios para cualquier instancia del tipo.
+# Example:
+#   // Incorrect
+#   class C
+#   {
+#       public C(int i) { }
+#   }
+#   // Correct
+#   class C(int i)
+#   {
+#   }
+# Exception: Puede omitirse si se requiere lógica adicional en el constructor o compatibilidad con versiones anteriores a C# 12.
+# Recomendation: Mantener activa para aprovechar las nuevas características del lenguaje y mejorar la legibilidad. Si se requiere compatibilidad con versiones anteriores, considerar desactivarla.
+# Justification: El equipo prioriza el uso de features modernas y la claridad del código.
+dotnet_diagnostic.IDE0290.severity = warning
+
+[**/*Tests.cs]
+dotnet_diagnostic.CS1591.severity = none
+[*.cs]
+# INFO !!!!  A partir de aqui se puede continuar con el resto de tipos de archivos.
+
+[*.yaml]
+
+[*.json]
+

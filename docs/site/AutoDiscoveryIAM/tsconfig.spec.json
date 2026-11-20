@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "rootDir": ".",
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "frugocorp_modules/**/*.d.ts", "frugocorp_modules/**/*.spec.ts"]
+}

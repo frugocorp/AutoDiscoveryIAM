@@ -1,0 +1,3 @@
+namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Roles.Commands.RestoreRolePermissionsByPermissionPublicId;
+
+public record RestoreRolePermissionsByPermissionPublicIdResponseDto(Guid RolePublicId, Guid PermissionPublicId, DateTime RestoredAt);

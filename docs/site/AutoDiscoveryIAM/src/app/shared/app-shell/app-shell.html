@@ -1,0 +1,122 @@
+<mat-sidenav-container class="h-full">
+  <!-- #drawer se declara SIEMPRE (no dentro de un @if): un @if envolviendo el elemento saca la
+       variable de referencia de scope para el resto de la plantilla (el header movil de abajo, en
+       mat-sidenav-content, tambien necesita "drawer"). config/design.json controla la visibilidad
+       via [opened] -- mode="side" + opened=false no reserva ancho, equivale a que la barra no
+       exista para el layout. -->
+  <mat-sidenav
+    #drawer
+    class="sidebar-primary border-r border-[var(--color-border)] bg-[var(--color-surface)]"
+    [mode]="sidenavMode()"
+    [opened]="design().showPrimaryBar && sidenavOpened()"
+    [fixedInViewport]="isMobile()"
+  >
+    <div class="flex h-full flex-col items-stretch gap-1 overflow-y-auto pb-4">
+      <a
+        class="mb-2 flex items-center justify-center px-2 py-4 text-center text-[0.7rem] font-bold text-[var(--color-ink)] no-underline"
+        routerLink="/"
+        aria-label="Ir al inicio"
+        (click)="isMobile() && drawer.close()"
+      >
+        @if (logo(); as logoSrc) {
+          <img [src]="logoSrc" [alt]="resources().siteName" class="h-auto w-full max-w-[40px]" />
+        } @else {
+          {{ resources().siteName }}
+        }
+      </a>
+
+      <!-- El color/borde activo e inactivo van SIEMPRE en la misma rama del ternario (nunca
+           estaticos + [class] superpuestos) -- con ambos coexistiendo en el DOM, cual "gana"
+           dependia del orden en que Tailwind compilo esas 2 utilidades (arbitrario, no
+           garantizado), y en la practica siempre ganaba la version inactiva/muted. -->
+      @for (section of sections; track section.key) {
+        <a
+          class="flex flex-col items-center gap-1 px-1 py-2.5 text-center text-[0.7rem] font-semibold no-underline"
+          [class]="
+            section.key === activeSectionKey()
+              ? 'border-l-[3px] border-[var(--color-primary)] text-[var(--color-ink)]'
+              : 'border-l-[3px] border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+          "
+          [routerLink]="['/', section.key]"
+          (click)="isMobile() && drawer.close()"
+        >
+          <span class="material-symbols-outlined text-[20px]">{{ section.icon }}</span>
+          <span class="leading-tight">{{ section.label }}</span>
+        </a>
+      }
+
+      <button
+        type="button"
+        class="mt-auto flex h-8 w-8 self-center items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+        [matMenuTriggerFor]="settingsMenu"
+        aria-label="Estilo de codigo"
+      >
+        <span class="material-symbols-outlined text-[18px]">settings</span>
+      </button>
+
+      <button
+        type="button"
+        class="flex h-8 w-8 self-center items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+        (click)="theme.toggle()"
+        [attr.aria-label]="'Cambiar a tema ' + (theme.mode() === 'dark' ? 'claro' : 'oscuro')"
+      >
+        <span class="material-symbols-outlined text-[18px]">{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+      </button>
+    </div>
+  </mat-sidenav>
+
+  <mat-menu #settingsMenu="matMenu">
+    <button mat-menu-item [matMenuTriggerFor]="codeStyleMenu">Estilo de codigo</button>
+  </mat-menu>
+
+  <mat-menu #codeStyleMenu="matMenu">
+    <!-- Fila "All" -- elige un tema para TODOS los lenguajes visibles de un solo golpe, siempre
+         primera. Reusa la misma languageThemeMenu (ver mas abajo, que ya distingue el sentinel). -->
+    <button mat-menu-item [matMenuTriggerFor]="languageThemeMenu" [matMenuTriggerData]="{ lang: allLanguagesThemeId }">
+      All
+    </button>
+    @for (lang of codeLanguages(); track lang.lang) {
+      <button mat-menu-item [matMenuTriggerFor]="languageThemeMenu" [matMenuTriggerData]="{ lang: lang.lang }">
+        {{ lang.lang }}
+      </button>
+    }
+  </mat-menu>
+
+  <!-- Una sola plantilla reutilizada para los N lenguajes + la fila "All" (matMenuTriggerData, ver
+       app-shell.ts) -- evita un <mat-menu> hardcodeado por lenguaje. setCodeTheme() ya distingue el
+       sentinel allLanguagesThemeId de un lenguaje real. -->
+  <mat-menu #languageThemeMenu="matMenu">
+    <ng-template matMenuContent let-lang="lang">
+      <div class="min-w-[220px] px-2 py-1" (click)="$event.stopPropagation()">
+        <ndmk-searchable-select
+          [items]="codeThemeItems()"
+          [value]="lang === allLanguagesThemeId ? allCodeTheme() : codeTheme.themeFor(lang)"
+          placeholder="Buscar tema..."
+          (valueChange)="setCodeTheme(lang, $event)"
+        />
+      </div>
+    </ng-template>
+  </mat-menu>
+
+  <mat-sidenav-content class="bg-[var(--color-bg)]">
+    <div class="flex h-full flex-col overflow-hidden">
+      @if (design().showPrimaryBar && isMobile()) {
+        <header class="flex h-12 flex-none items-center gap-3 border-b border-[var(--color-border)] px-3">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded text-[var(--color-ink)]"
+            (click)="drawer.toggle()"
+            aria-label="Abrir menu"
+          >
+            <span class="material-symbols-outlined">menu</span>
+          </button>
+          <span class="text-sm font-bold text-[var(--color-ink)]">{{ resources().siteName }}</span>
+        </header>
+      }
+
+      <div class="min-h-0 flex-1 overflow-hidden">
+        <router-outlet />
+      </div>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

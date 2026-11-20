@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Ejecutar TODAS las pruebas incluyendo performance -->
+    <!-- Sin filtros - se ejecuta todo -->
+    
+    <!-- Paralelismo optimizado para CI -->
+    <MaxCpuCount>0</MaxCpuCount> <!-- Usar todos los cores disponibles -->
+    <DisableParallelization>false</DisableParallelization>
+    
+    <!-- Directorios -->
+    <ResultsDirectory>./coverage/ci-raw</ResultsDirectory>
+    
+    <!-- Timeout extendido para CI completo -->
+    <TestSessionTimeout>7200000</TestSessionTimeout> <!-- 120 minutos -->
+    
+    <!-- Logging completo para debugging en CI -->
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+  </RunConfiguration>
+
+  <!-- Configuración específica para xUnit -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>0</MaxParallelThreads> <!-- Usar todos los cores -->
+  </xUnit>
+
+  <!-- Recolección completa de datos -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Code Coverage completo -->
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <!-- Formatos compatibles con DeterministicReport -->
+          <Format>cobertura,json</Format>
+          
+          <!-- Incluir solo el proyecto principal -->
+          <Include>[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*</Include>
+          
+          <!-- Excluir archivos no relevantes -->
+          <Exclude>[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Migrations.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Migrations.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.*Tests*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Docs.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.Docs.*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM]*.*OpenApi*,[FrugoCorp.AspNetCore.AutoDiscoveryIAM].Data.Seeds.*</Exclude>
+          
+          <!-- Excluir archivos específicos -->
+          <ExcludeByFile>
+            **/Migrations/**/*.cs;
+            **/*ModelSnapshot.cs;
+            **/Docs/**/*.cs;
+            **/Data/Seeds/**/*.cs;
+            **/*ExampleSwagger*.cs;
+            **/*OpenApi*.cs;
+            **/obj/**/*.cs;
+            **/bin/**/*.cs;
+            **/wwwroot/**/*.cs
+          </ExcludeByFile>
+          
+          <!-- Excluir por atributos -->
+          <ExcludeByAttribute>
+            ExcludeFromCodeCoverageAttribute;
+            GeneratedCodeAttribute;
+            CompilerGeneratedAttribute;
+            ObsoleteAttribute
+          </ExcludeByAttribute>
+          
+          <!-- Configuraciones completas para CI -->
+          <UseSourceLink>false</UseSourceLink>
+          <SingleHit>false</SingleHit>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SkipAutoProps>true</SkipAutoProps>
+          <DeterministicReport>true</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

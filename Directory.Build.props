@@ -1,0 +1,49 @@
+<Project>
+  <PropertyGroup>
+    <!-- Configuración común -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <!-- SAST: sube solo la categoria Security de los analizadores nativos del SDK a "All",
+         independiente del AnalysisMode general; detecta patrones como SQL por concatenacion
+         (CA2100), criptografia debil (CA5350+) o deserializacion insegura, que StyleCop/
+         Roslynator/Meziantou no cubren por estar enfocados en estilo/calidad, no en seguridad. -->
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    
+
+    <!-- Información del ensamblado -->
+    <Company>FrugoCorp</Company>
+    <Authors>FrugoCorp Team</Authors>
+    <Product>AutoDiscoveryIAM</Product>
+    <Copyright>Copyright © FrugoCorp 2026</Copyright>
+    <RepositoryUrl>https://github.com/frugocorp/AutoDiscoveryIAM</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Estilo y formato -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)rules.ruleset</CodeAnalysisRuleSet> -->
+    <!-- Meziantou: se desactivan todas las reglas para activar las necesarias -->
+    <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
+  </PropertyGroup>
+
+  <!-- Analyzers comunes para todos -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory).editorconfig" Link=".editorconfig" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
+    <PackageReference Include="Roslynator.Analyzers" Version="4.13.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.201">      
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

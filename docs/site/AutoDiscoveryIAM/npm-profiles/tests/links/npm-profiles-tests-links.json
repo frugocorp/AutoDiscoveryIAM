@@ -1,0 +1,17 @@
+{
+  "internal": {
+    "description": "Valida links internos del contenido (rapido, sin red).",
+    "include": ["src/app/core/nav-content.spec.ts"]
+  },
+  "external": {
+    "description": "Valida SOLO los links externos del contenido (requiere red real).",
+    "include": ["src/app/core/nav-content.spec.ts"],
+    "filter": "externos",
+    "env": { "CHECK_EXTERNAL_LINKS": "1" }
+  },
+  "full": {
+    "description": "Valida links internos + externos juntos -- validacion completa antes de publicar.",
+    "include": ["src/app/core/nav-content.spec.ts"],
+    "env": { "CHECK_EXTERNAL_LINKS": "1" }
+  }
+}

@@ -1,0 +1,59 @@
+server {
+    listen ${NGINX_PORT_CONTAINER};
+    server_tokens off;
+
+    root /usr/share/nginx/html;
+
+    # Cada ruta real del manifiesto ya tiene su propio index.html fisico (prerender completo, no
+    # una SPA con un unico shell) -- por eso NO usamos "try_files $uri $uri/ /index.html" (eso
+    # serviria el shell vacio para cualquier 404 real, perdiendo el status code correcto).
+    # "$uri/index.html" cubre rutas sin trailing slash que Angular Router resuelve como carpeta
+    # (ej. /docs/instalacion -> /docs/instalacion/index.html). "=404" (no una location nombrada)
+    # es a proposito -- "try_files ... @named_location" hace un redirect interno SIN emitir un 404
+    # real (nginx nunca pasa por su mecanismo de error), asi que "error_page 404" de abajo nunca
+    # disparaba -- confirmado con una URL inventada devolviendo 200 en la primera version de este
+    # archivo. "=404" SI genera el error real, que "error_page" abajo intercepta.
+    # "no-cache" default aca (no solo en el bloque regex de mas abajo): las rutas reales del sitio
+    # son SIN extension en la URL (ej. "/docs/instalacion", Angular Router) -- un "location ~*
+    # regex" matchea contra la URI que pidio el cliente, NUNCA contra el archivo que try_files
+    # termino resolviendo (".../index.html"), asi que un regex "\.html$" jamas matchea una ruta
+    # real y esas paginas quedaban SIN ningun Cache-Control -- error real confirmado con curl (sin
+    # este default, "curl -I /" no traia ningun header de cache). ".md"/sitemap.xml/robots.txt/etc
+    # SI se piden con su extension real (fetch de ContentService, ver mas abajo), a esos les sigue
+    # aplicando el bloque regex especifico.
+    location / {
+        try_files $uri $uri/index.html $uri.html =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # index.csr.html es el shell client-side-only que Angular genera para cualquier ruta FUERA del
+    # prerender (URL inventada / contenido borrado entre builds) -- Angular Router + DocPage
+    # renderiza el mismo "Pagina no encontrada" de siempre. "error_page CODE URI" (sin "=200") sirve
+    # ese archivo PRESERVANDO el status code original (404) en la respuesta real -- a diferencia de
+    # SSR hoy, que responde 200 con ese mismo contenido (un "soft 404", malo para SEO/crawlers).
+    error_page 404 /index.csr.html;
+    location = /index.csr.html {
+        internal;
+    }
+
+    # Assets con hash en el nombre (outputHashing:"all" en angular.json, ej. main-ZHSO3RAD.js -- el
+    # hash de Angular va separado por GUION, no por punto ("nombre-HASH.ext", nunca
+    # "nombre.HASH.ext" -- confirmado con curl contra el archivo real servido, la primera version
+    # de este regex asumia un punto y nunca matcheaba nada) y es alfanumerico mixto, NO hexadecimal
+    # puro (por eso [a-zA-Z0-9] y no [0-9a-f]) -- inmutables por definicion (un contenido nuevo
+    # siempre tiene un hash nuevo), cache agresivo seguro. El patron va entre comillas: un "{n,m}"
+    # de cuantificador SIN comillas rompe el parser de nginx (interpreta el "{" como apertura de
+    # bloque, no como parte del regex) -- error real encontrado y confirmado en el log de arranque
+    # del contenedor.
+    location ~* "-[a-zA-Z0-9]{8,20}\.(js|css|woff2?|png|jpe?g|svg|webp|avif)$" {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Contenido Markdown/sitemap/robots/manifest -- SIN hash en el nombre, SI se piden con su
+    # extension real (ej. ContentService hace fetch a /content-parser-md/<archivo>.md) -- mismo
+    # "no-cache" que ya es el default de "location /", este bloque solo lo hace explicito para lo
+    # que no cae bajo esa location (quedaria redundante si algun dia "location /" cambia).
+    location ~* "\.(md|xml|txt|webmanifest)$" {
+        add_header Cache-Control "no-cache" always;
+    }
+}

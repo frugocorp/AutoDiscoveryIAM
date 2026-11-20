@@ -1,0 +1,19 @@
+services:
+  adiam-mssql:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile.mssql
+    restart: unless-stopped
+    environment:
+      SA_PASSWORD: '${MSSQL_SA_PASSWORD}'
+      ACCEPT_EULA: '${MSSQL_ACCEPT_EULA}'
+      MSSQL_PID: '${MSSQL_PID}'
+      MSSQL_TCP_PORT: ${MSSQL_TCP_PORT_CONTAINER}
+      MSSQL_DB_NAME: '${MSSQL_DB_NAME}'
+    ports:
+      - '${MSSQL_TCP_PORT_MAP}'
+    volumes:
+      - ${MSSQL_VOLUME_PERSIST_DB}:/var/opt/mssql
+
+volumes:
+  volume_adiam-mssql:

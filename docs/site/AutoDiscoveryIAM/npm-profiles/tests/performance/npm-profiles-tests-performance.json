@@ -1,0 +1,6 @@
+{
+  "content": {
+    "description": "Mide cuanto tarda parser-md en parsear cada pagina real del sitio -- detecta regresiones de performance en extensiones custom.",
+    "include": ["src/app/core/content-performance.spec.ts"]
+  }
+}

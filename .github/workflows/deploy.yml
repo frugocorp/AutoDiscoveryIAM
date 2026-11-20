@@ -1,0 +1,75 @@
+name: Deploy
+
+# Mismo patron que el despliegue de ngx-docs-markdown-kit: el servidor tiene un clon del repo en
+# ~/AutoDiscoveryIAM y este workflow entra por SSH, actualiza el clon y reconstruye el stack de Docker
+# que cambio. El proxy reverso (nginx) NO vive en este repo: lo despliega nginx-server-docker, que
+# tiene que estar levantado antes (crea la red edge-net a la que se conecta cada stack).
+#
+# Secrets del repositorio (Settings > Secrets and variables > Actions):
+#   DEPLOY_SSH_KEY  llave privada SSH con acceso al servidor
+#   DEPLOY_USER     usuario SSH
+#   DEPLOY_HOST     host o IP del servidor
+#   SSH_PORT        opcional, 22 por defecto
+#
+# En el servidor, una sola vez: clonar el repo en ~/AutoDiscoveryIAM y crear el .env de cada stack a
+# partir de su .env.template (el .env nunca se versiona; sin el, el despliegue se detiene).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un despliegue a la vez: dos pushes seguidos no compiten por el mismo contenedor.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  # Arma la lista de stacks cuya carpeta cambio respecto al commit anterior: el contenido del sitio y
+  # su propia config de despliegue disparan el redespliegue del sitio. Un stack nuevo a futuro (por
+  # ejemplo docker/api) solo necesita su entrada en el filtro y en la lista del despliegue manual.
+  detectar-cambios:
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ github.event_name == 'workflow_dispatch' && '["app/web"]' || steps.filtro.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filtro
+        with:
+          filters: |
+            app/web:
+              - 'docs/site/AutoDiscoveryIAM/**'
+              - 'docker/app/web/**'
+
+  deploy:
+    needs: detectar-cambios
+    if: needs.detectar-cambios.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # un stack roto no cancela el despliegue de los demas
+      max-parallel: 1  # nunca en simultaneo: un build de Angular a la vez en el servidor
+      matrix:
+        stack: ${{ fromJson(needs.detectar-cambios.outputs.stacks) }}
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: "Redesplegar: docker/${{ matrix.stack }}"
+        run: |
+          ssh -p ${{ secrets.SSH_PORT || '22' }} -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << EOF
+            set -e
+            cd ~/AutoDiscoveryIAM
+            git pull --ff-only origin main
+            cd docker/${{ matrix.stack }}
+            test -f .env || { echo "Falta docker/${{ matrix.stack }}/.env en el servidor (copialo de .env.template)"; exit 1; }
+            # Primero se construye la imagen nueva y despues se reemplaza el contenedor: el sitio
+            # sigue sirviendo mientras dura el build.
+            docker compose -f docker-compose.yml build --no-cache
+            docker compose -f docker-compose.yml up -d -V
+          EOF

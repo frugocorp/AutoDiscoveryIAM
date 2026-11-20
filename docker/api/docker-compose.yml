@@ -1,0 +1,56 @@
+services:
+  adiam-api:
+    build:
+      # Raiz del repo, relativa a esta carpeta docker/api -- ajusta en .env (API_BUILD_CONTEXT) si
+      # copias esta carpeta a otro proyecto con distinta profundidad.
+      context: ${API_BUILD_CONTEXT}
+      # Ruta del Dockerfile relativa al contexto de arriba (no a esta carpeta) -- ver
+      # API_DOCKERFILE_PATH en .env. El Dockerfile en si es generico (no conoce el nombre del
+      # proyecto ni ningun paquete NuGet especifico): recibe PROJECT_PATH/PROJECT_NAME como build
+      # args, abajo.
+      dockerfile: ${API_DOCKERFILE_PATH}
+      # Explicito a proposito: sin esto, Docker usa la ultima etapa textual del Dockerfile como
+      # destino implicito — que es "dev", no "final" — si este archivo se usa solo (sin el
+      # override de desarrollo). Ver docker/README.md.
+      target: final
+      # Feed local de NuGet (ver NUGET_LOCAL_FEED_PATH en .env) -- monta esa carpeta del host como
+      # contexto adicional de build ("nugetfeed" en el Dockerfile). Este proyecto no necesita un
+      # feed local propio (referencia la libreria via ProjectReference, no PackageReference), pero
+      # el Dockerfile generico igual espera este contexto -- apunta a una carpeta vacia
+      # (./local-nuget-feed) para que el build no falle por un contexto inexistente.
+      additional_contexts:
+        nugetfeed: ${NUGET_LOCAL_FEED_PATH}
+      args:
+        - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+        - API_PORT_CONTAINER=${API_PORT_CONTAINER}
+        # Ruta y nombre base del proyecto .NET a construir (ver API_PROJECT_PATH/API_PROJECT_NAME
+        # en .env) -- el Dockerfile los reutiliza para el .csproj, la .dll publicada y los
+        # directorios de trabajo, sin tener el nombre del proyecto hardcodeado en ningun lado.
+        - PROJECT_PATH=${API_PROJECT_PATH}
+        - PROJECT_NAME=${API_PROJECT_NAME}
+        # Solo necesario si tu AssemblyName (.csproj) difiere del nombre del proyecto -- este
+        # ejemplo si difiere (ver API_ASSEMBLY_NAME en .env). Si coinciden, borra esta linea y el
+        # Dockerfile usa PROJECT_NAME como default.
+        - ASSEMBLY_NAME=${API_ASSEMBLY_NAME}
+    # Sin "ports:" a proposito -- este contenedor no publica ningun puerto al host, ni siquiera
+    # atado a 127.0.0.1. La unica forma de llegar a el es por la red compartida de Docker (nombre +
+    # puerto interno), que es exactamente como llega nginx -- cero excepciones, incluso desde el
+    # propio host. El costo: ya no puedes hacer "curl localhost:..." directo para depurar sin pasar
+    # por nginx; si lo necesitas puntualmente, agrega un "ports:" temporal en un
+    # docker-compose.override.local.yml tuyo (sin trackear) y bórralo despues.
+    volumes:
+      # Anillo de claves de Data Protection (cifra los secretos de Authenticator): tiene que
+      # sobrevivir a reconstrucciones del contenedor. Ver el Dockerfile (etapa base).
+      - adiam-dataprotection-keys:/home/app/.aspnet/DataProtection-Keys
+    networks:
+      - edge-net
+
+volumes:
+  adiam-dataprotection-keys:
+
+networks:
+  # La crea nginx-server-docker (repo aparte), por eso "external: true": ese stack debe estar
+  # levantado antes que este.
+  edge-net:
+    external: true
+    name: edge-net

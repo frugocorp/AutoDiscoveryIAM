@@ -1,0 +1,6 @@
+{
+  "tests": {
+    "description": "Perfiles de \"ng test\" -- organizados por sub-carpeta segun que se esta probando.",
+    "file": "tests/npm-profiles-tests.json"
+  }
+}

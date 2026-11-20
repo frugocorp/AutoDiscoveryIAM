@@ -1,0 +1,97 @@
+# Directorios de desarrollo
+**/.git
+**/.vs
+**/.vscode
+**/.idea
+**/.docker
+
+# Archivos de entorno y configuración
+**/.env
+**/.env.*
+**/appsettings.*.json
+!**/appsettings.json
+
+# Directorios de compilación
+**/bin/
+**/obj/
+**/out/
+**/build/
+**/dist/
+
+# Dependencias
+**/node_modules/
+**/npm-debug.log
+**/yarn-debug.log
+**/yarn-error.log
+
+# Archivos de documentación -- docs/site/ es la excepción a propósito: es un proyecto Angular real
+# que docker/app/web/ usa como código fuente (ver docker/app/web/.env, APP_PROJECT_PATH), no
+# documentación estática. No se puede excluir "docs/" como directorio y luego des-excluir "docs/site/"
+# con "!" (Docker no permite re-incluir contenido de un directorio ya excluido) -- por eso se
+# excluyen archivos/subcarpetas puntuales en vez del directorio completo.
+docs/*.md
+docs/nuget/
+docs/issues/
+**/LICENSE
+**/*.txt
+!**/README.md
+
+# Archivos de prueba
+**/*.[Tt]est*/
+**/*.[Ss]pec*/
+**/coverage/
+**/.coverage
+**/.nyc_output
+
+# Archivos de desarrollo
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+**/*.suo
+**/*.userprefs
+**/*.log
+**/*.bak
+**/*.cache
+**/*.tmp
+**/*~
+
+# SSL/TLS
+**/*.pfx
+**/*.key
+**/*.crt
+**/*.csr
+**/*.pem
+**/*.p12
+**/*.cer
+
+# Docker
+**/docker-compose*
+**/Dockerfile*
+**/.dockerignore
+
+# Herramientas (excluye la mayoría, pero permite explícitamente los que necesitas)
+#**/.editorconfig
+#**/.eslintrc
+#**/.prettierrc
+#**/.prettierignore
+#**/.stylelintrc
+#**/tsconfig.json
+#**/webpack.config.js
+#**/jest.config.js
+#**/karma.conf.js
+#**/.travis.yml
+#**/.gitlab-ci.yml
+#**/.github/
+
+# Permitir archivos de configuración esenciales para formateo y análisis
+!/.editorconfig
+!/.prettierignore
+!/.prettierrc
+
+# Otros
+**/*.zip
+**/*.tar.gz
+**/*.rar
+**/*.7z
+**/.DS_Store
+**/Thumbs.db

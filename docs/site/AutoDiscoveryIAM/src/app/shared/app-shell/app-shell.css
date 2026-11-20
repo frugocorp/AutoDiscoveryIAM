@@ -1,0 +1,18 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Ancho fijo via variable propia -- no expresable con una utilidad de Tailwind: es un custom
+   property INTERNO de Material (".mat-drawer { width: var(--mat-sidenav-container-width) }"), no
+   una propiedad CSS estandar. El resto del layout de este componente si usa Tailwind (ver
+   app-shell.html). */
+.sidebar-primary {
+  --mat-sidenav-container-width: var(--sidebar-width-primary);
+  /* M3 le da al drawer un "shape" (esquinas redondeadas) por default -- el sitio quiere barras
+     totalmente cuadradas con solo la linea de borde (ver border-r en app-shell.html) como
+     separacion, asi que se fuerza el token a 0 y ademas se pisa border-radius directo (por si el
+     valor calculado de MDC no reacciona solo al custom property). */
+  --mat-sidenav-container-shape: 0;
+  border-radius: 0;
+}

@@ -1,0 +1,3 @@
+namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Roles.Commands.ClearBulkRoleHiddenRelations;
+
+public record ClearBulkRoleHiddenRelationsCommand(Guid RolePublicId);

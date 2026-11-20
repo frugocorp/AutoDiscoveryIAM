@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Solo pruebas de performance -->
+    <TestCaseFilter>Category=Performance</TestCaseFilter>
+    
+    <!-- Sin paralelismo para mediciones precisas -->
+    <MaxCpuCount>1</MaxCpuCount>
+    <DisableParallelization>true</DisableParallelization>
+    
+    <!-- Directorios -->
+    <ResultsDirectory>./runsettings/coverage</ResultsDirectory>
+    
+    <!-- Timeout extendido para pruebas de performance -->
+    <TestSessionTimeout>3600000</TestSessionTimeout> <!-- 60 minutos -->
+    
+    <!-- Logging detallado para análisis -->
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+  </RunConfiguration>
+
+  <!-- Configuración específica para xUnit - sin paralelismo -->
+  <xUnit>
+    <ParallelizeTestCollections>false</ParallelizeTestCollections>
+    <MaxParallelThreads>1</MaxParallelThreads>
+  </xUnit>
+
+  <!-- Recolectores de datos para análisis de performance -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- Contadores de performance -->
+      <DataCollector friendlyName="DotNetEventCounters">
+        <Configuration>
+          <Counters>System.Runtime,Microsoft.AspNetCore.Hosting,Microsoft.EntityFrameworkCore</Counters>
+          <RefreshIntervalInSec>1</RefreshIntervalInSec>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

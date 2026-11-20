@@ -1,0 +1,55 @@
+{
+  "name": "autodiscoveryiam",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "node frugocorp_modules/parser-md/scripts/generate-content-manifest.mjs && node frugocorp_modules/create-ngx-docs-site/scripts/validate-site-variables.mjs && concurrently -k -n manifest,serve \"node frugocorp_modules/parser-md/scripts/generate-content-manifest.mjs --watch\" \"ng serve\"",
+    "build": "node frugocorp_modules/parser-md/scripts/generate-content-manifest.mjs && node frugocorp_modules/create-ngx-docs-site/scripts/validate-site-variables.mjs && node frugocorp_modules/create-ngx-docs-site/scripts/validate-privacy-placeholders.mjs && node frugocorp_modules/parser-md-seo/scripts/generate-seo-files.mjs && ng build",
+    "test": "ng test",
+    "readme": "node frugocorp_modules/parser-md-converter/scripts/generate-readme.mjs",
+    "profile": "node npm-profiles/run-profile.mjs"
+  },
+  "dependencies": {
+    "@angular/animations": "^22.1.0",
+    "@angular/cdk": "^22.1.0",
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/material": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/platform-server": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "@angular/ssr": "^22.1.3",
+    "@ngx-docs-markdown-kit/parser-md": "^0.1.0",
+    "@ngx-docs-markdown-kit/parser-md-seo": "^0.1.0",
+    "@ngx-docs-markdown-kit/parser-md-code-block": "^0.2.0",
+    "@ngx-docs-markdown-kit/parser-md-code-block-themes": "^0.1.0",
+    "@ngx-docs-markdown-kit/parser-md-image": "^0.1.0",
+    "@ngx-docs-markdown-kit/parser-md-card": "^0.2.0",
+    "@ngx-docs-markdown-kit/parser-md-file-embed": "^0.1.0",
+    "@ngx-docs-markdown-kit/parser-md-converter": "^0.3.0",
+    "@ngx-docs-markdown-kit/ui": "^0.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.2",
+    "@angular/cli": "^22.1.2",
+    "@angular/compiler-cli": "^22.1.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "concurrently": "^10.0.5",
+    "@types/node": "^20.17.19",
+    "@vitest/coverage-v8": "^4.0.8",
+    "jsdom": "^28.0.0",
+    "marked": "^18.0.9",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2"
+  },
+  "overrides": {
+    "postcss-selector-parser": "6.1.6"
+  }
+}

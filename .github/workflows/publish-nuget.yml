@@ -39,9 +39,12 @@ jobs:
         with:
           fetch-depth: 0 # historial completo: SourceLink y el CHANGELOG lo necesitan
 
+      # Mismo SDK que el desarrollo local (global.json): cada SDK nuevo puede traer reglas de analisis
+      # nuevas y, con TreatWarningsAsErrors, un "10.0.x" flotante rompia el build sin cambiar el codigo.
+      # Para subir de SDK se cambia global.json, se compila en local y se corrige lo que aparezca.
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
       # El tag manda: si no coincide con <Version> del .csproj se detiene ANTES de compilar, para no
       # publicar nunca un numero distinto al que dice el tag (una version publicada no se puede borrar).

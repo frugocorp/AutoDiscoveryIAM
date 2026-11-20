@@ -158,14 +158,14 @@ public class DiscoveryPermissionsService : IDiscoveryPermissionsService
   private static IEnumerable<string> ValidateRoutes(IList<PermissionDescriptor> descriptors)
   {
     return descriptors
-        .Where(p => p.Routes == null || !p.Routes.Any())
+        .Where(p => p.Routes == null || p.Routes.Count == 0)
         .Select(p => $"Permiso '{p.Key}': sin rutas definidas");
   }
 
   private static IEnumerable<string> ValidateHttpMethods(IList<PermissionDescriptor> descriptors)
   {
     return descriptors
-        .Where(p => p.HttpMethods == null || !p.HttpMethods.Any())
+        .Where(p => p.HttpMethods == null || p.HttpMethods.Count == 0)
         .Select(p => $"Permiso '{p.Key}': sin métodos HTTP definidos");
   }
 

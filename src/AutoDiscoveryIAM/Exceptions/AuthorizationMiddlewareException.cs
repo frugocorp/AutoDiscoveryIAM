@@ -142,7 +142,7 @@ public sealed class AuthorizationMiddlewareException : Exception
 
         exception.ContextData["FailureType"] = "InsufficientPermissions";
         exception.ContextData["UserId"] = userId;
-        if (requiredPermissions?.Any() == true)
+        if (requiredPermissions?.Count > 0)
             exception.ContextData["RequiredPermissions"] = requiredPermissions.ToArray();
         if (reason != null)
             exception.ContextData["Reason"] = reason;

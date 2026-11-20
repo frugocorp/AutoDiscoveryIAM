@@ -50,12 +50,14 @@
        espanol por convencion del proyecto; ver README.md para el detalle completo en espanol. -->
   <PropertyGroup>
     <PackageId>FrugoCorp.AspNetCore.AutoDiscoveryIAM</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>Dynamic RBAC and JWT authentication for ASP.NET Core, with permissions auto-discovered from your real endpoints via EndpointDataSource: no manual permission maps to keep in sync. Includes refresh token rotation with reuse detection, 2FA (TOTP/email), Google social login, full account lifecycle (registration, activation, password reset, lockout), rate limiting, and native OpenAPI docs. Built with Vertical Slice Architecture on minimal APIs, no MVC, no MediatR.</Description>
-    <PackageReleaseNotes>0.1.0: initial preview release. JWT auth (access + refresh, rotation and reuse detection), 2FA (TOTP/email), Google social login, full account lifecycle, rate limiting and native OpenAPI docs. Dynamic RBAC: permissions are discovered from your own endpoints too (any root namespace following the Features.Feature.Action convention); the sync reports endpoints it cannot name and rejects duplicate keys across slices. The seeded AdminAutoDiscoveryIAM role administers users, roles and permissions from day one; IsSuAdmin/IsDevelopment are database-only. Upgrades keep your data: your migrations cover the schema, and the package applies its own data changes once on startup. Validated end-to-end from a clean external project, including an upgrade. MIT licensed.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.1.1: the "Project website" link on NuGet.org now points to the documentation site (https://autodiscoveryiam.frugocorp.com); the GitHub repository stays linked as "Source repository". No code changes. Full history: https://github.com/frugocorp/AutoDiscoveryIAM/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <!-- "Project website" en nuget.org: el sitio de documentacion. El enlace al codigo ya lo da
+         "Source repository" (RepositoryUrl), asi que no se repite aqui. -->
+    <PackageProjectUrl>https://autodiscoveryiam.frugocorp.com</PackageProjectUrl>
     <PackageTags>aspnetcore;dotnet;rbac;jwt;oauth;authentication;authorization;iam;identity;2fa;security;permissions;minimal-api</PackageTags>
     <!-- Icono de organizacion (FrugoCorp), reusado como PackageIcon a proposito: mismo criterio
          que .NET/Google en sus propios paquetes NuGet. Si algun dia se quiere un icono especifico
@@ -63,10 +65,12 @@
     <PackageIcon>icon.png</PackageIcon>
     <IsPackable>true</IsPackable>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <!-- Validacion de paquete del SDK: revisa la coherencia del .nupkg en cada pack. Despues de publicar
-         la 0.1.0, agregar <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
-         para que el pack falle si un cambio rompe la API publica respecto a esa version. -->
+    <!-- Validacion de paquete del SDK: revisa la coherencia del .nupkg en cada pack y, con la version
+         base, falla si un cambio rompe la API publica respecto a esa version ya publicada (la descarga
+         de NuGet.org). Mientras la version sea 0.y.z se permiten cambios incompatibles: si uno es
+         intencional, se sube la version MINOR y se mueve esta base a la ultima version publicada. -->
     <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
     <!-- Simbolos (.snupkg, se publican a la vez en NuGet.org) + SourceLink (incluido en el SDK): quien
          consume el paquete puede depurar paso a paso dentro de la libreria, con el codigo exacto de esa version. -->
     <IncludeSymbols>true</IncludeSymbols>

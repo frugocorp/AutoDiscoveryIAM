@@ -1,0 +1,132 @@
+name: Publish NuGet
+
+# Publica la libreria en NuGet.org cuando se sube un tag de version (ej. "v0.1.1"). Un push normal a
+# main NUNCA publica: solo el tag. Flujo de cada version:
+#   1. Subir <Version> en src/AutoDiscoveryIAM/AutoDiscoveryIAM.csproj y mover lo de [Unreleased] del
+#      CHANGELOG.md a una seccion "## [x.y.z] - AAAA-MM-DD" (mas sus enlaces al final del archivo).
+#   2. Commit + push a main.
+#   3. git tag vX.Y.Z && git push origin vX.Y.Z
+#
+# Sin llaves de NuGet guardadas en GitHub: usa Trusted Publishing (OIDC). NuGet.org confia en este
+# workflow por una politica creada una sola vez en nuget.org (usuario > Trusted Publishing), con
+# Owner "FrugoCorp", repositorio "frugocorp/AutoDiscoveryIAM" y archivo "publish-nuget.yml". Cada
+# corrida recibe una llave temporal que vence en 1 hora.
+#
+# Secret del repositorio (Settings > Secrets and variables > Actions):
+#   NUGET_USER  usuario (nombre de perfil, no el correo) de nuget.org de quien creo la politica
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write # crear el GitHub Release
+  id-token: write # pedir el token OIDC de Trusted Publishing
+
+# Una publicacion a la vez: dos tags seguidos no compiten.
+concurrency:
+  group: publish-nuget
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # historial completo: SourceLink y el CHANGELOG lo necesitan
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # El tag manda: si no coincide con <Version> del .csproj se detiene ANTES de compilar, para no
+      # publicar nunca un numero distinto al que dice el tag (una version publicada no se puede borrar).
+      - name: Validar que el tag coincide con la version del paquete
+        id: version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CSPROJ_VERSION="$(dotnet msbuild src/AutoDiscoveryIAM/AutoDiscoveryIAM.csproj -getProperty:Version)"
+          echo "Tag: $TAG_VERSION | .csproj: $CSPROJ_VERSION"
+          if [ "$TAG_VERSION" != "$CSPROJ_VERSION" ]; then
+            echo "::error::El tag v$TAG_VERSION no coincide con <Version>$CSPROJ_VERSION</Version> del .csproj"
+            exit 1
+          fi
+          echo "value=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
+      # La version debe tener su seccion en el CHANGELOG: es el cuerpo del GitHub Release.
+      - name: Extraer las notas de la version del CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          # Comparacion literal con index() en vez de una regex: los puntos de la version y los
+          # corchetes del titulo no se interpretan como regex en ninguna variante de awk.
+          awk -v header="## [$VERSION]" '
+            index($0, header) == 1 { found=1; next }
+            found && (index($0, "## [") == 1 || $0 ~ /^\[[^]]+\]: /) { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md no tiene una seccion '## [$VERSION]' con contenido"
+            exit 1
+          fi
+          {
+            echo ''
+            echo '---'
+            echo ''
+            echo "**NuGet:** https://www.nuget.org/packages/FrugoCorp.AspNetCore.AutoDiscoveryIAM/$VERSION"
+            echo ''
+            echo '```bash'
+            echo "dotnet add package FrugoCorp.AspNetCore.AutoDiscoveryIAM --version $VERSION"
+            echo '```'
+            echo ''
+            echo '**Documentación:** https://autodiscoveryiam.frugocorp.com'
+          } >> release-notes.md
+
+      - name: Compilar
+        run: dotnet build AutoDiscoveryIAM.sln -c Release
+
+      # Solo las pruebas unitarias: las de integracion necesitan .env/appsettings.Test.json, que nunca se
+      # versionan (esas las corre el usuario con el perfil ci-full antes de cada version). Performance y
+      # MassiveData quedan fuera porque dependen de la velocidad de la maquina.
+      - name: Pruebas unitarias
+        run: >
+          dotnet test tests/AutoDiscoveryIAM.UnitTests -c Release --no-build
+          --filter "Category!=Performance&Category!=MassiveData"
+
+      # Empaqueta desde el commit del tag: SourceLink apunta exactamente a ese commit. Con
+      # PackageValidationBaselineVersion en el .csproj, el pack falla si la API publica se rompio
+      # respecto a la version base.
+      - name: Empaquetar
+        run: dotnet pack src/AutoDiscoveryIAM -c Release --no-build -o artifacts
+
+      - name: Login en NuGet (Trusted Publishing)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # El .snupkg se sube solo junto con el .nupkg (misma carpeta). --skip-duplicate: si el tag se
+      # vuelve a correr despues de que NuGet ya acepto esa version, no falla y sigue con el Release.
+      - name: Publicar en NuGet.org
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      # Mientras la version sea 0.y.z se marca como pre-release, igual que el CHANGELOG lo advierte.
+      - name: Crear el GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          PRERELEASE=""
+          case "$VERSION" in 0.*|*-*) PRERELEASE="--prerelease" ;; esac
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "El Release $GITHUB_REF_NAME ya existe; no se vuelve a crear."
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md $PRERELEASE artifacts/*.nupkg artifacts/*.snupkg
+          fi

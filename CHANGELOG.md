@@ -10,6 +10,12 @@ Este archivo es la fuente de verdad legible por humanos del historial de version
 
 Sin cambios pendientes de publicar.
 
+## [0.1.1] - 2026-11-19
+
+### Changed
+
+- El enlace "Project website" del paquete en NuGet.org apunta al sitio de documentación (https://autodiscoveryiam.frugocorp.com) en vez del repositorio; el repositorio sigue enlazado como "Source repository".
+
 ## [0.1.0] - 2026-11-19
 
 Primera versión de vista previa (preview). Validada desde un proyecto externo limpio, tanto en instalación nueva como en actualización desde una versión anterior (`tools/consumer-e2e`). La superficie pública aún puede cambiar mientras la versión sea `0.y.z`. Licencia MIT.
@@ -35,5 +41,6 @@ Primera versión de vista previa (preview). Validada desde un proyecto externo l
 - Auditoría y soft delete reutilizables en tus propias entidades (`AuditableEntity`).
 - Arquitectura Vertical Slice sobre minimal APIs — sin MVC, sin MediatR.
 
-[Unreleased]: https://github.com/frugocorp/AutoDiscoveryIAM/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/frugocorp/AutoDiscoveryIAM/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/frugocorp/AutoDiscoveryIAM/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/frugocorp/AutoDiscoveryIAM/releases/tag/v0.1.0

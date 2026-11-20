@@ -1,11 +1,11 @@
 ---
 [slug]: whats-included
-[title]: Qué incluye hoy
+[title]: ¿Qué incluye?
 [description]: Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
 [keywords]: funcionalidades, autenticación JWT, RBAC, 2FA, AutoDiscoveryIAM
 ---
 
-# Qué incluye hoy
+# ¿Qué incluye?
 
 - **Autenticación JWT** con access + refresh token, rotación y detección de reuso, blacklist de tokens por `jti`, e invalidación global inmediata al cambiar contraseña (`TokenValidFrom`).
 - **Autenticación de dos factores (2FA)** por correo o app autenticadora (TOTP), y **login social con Google** (vinculación de cuenta externa).

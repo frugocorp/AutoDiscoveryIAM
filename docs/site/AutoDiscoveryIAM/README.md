@@ -108,7 +108,7 @@ Cambiar un valor requiere editar el archivo y recompilar.
 
 - [Instalación](#instalación-1): agrega la librería a tu proyecto paso a paso.
 - [Introducción](#introducción): qué es y cómo está organizado el repositorio.
-- [Qué incluye hoy](#qué-incluye-hoy): las funcionalidades disponibles.
+- [¿Qué incluye?](#qué-incluye): las funcionalidades disponibles.
 - [Autorización con niveles de acceso](#autorización-con-niveles-de-acceso): cómo se decide quién puede hacer qué.
 - [Configuración](#configuración): todas las claves disponibles.
 
@@ -134,7 +134,7 @@ Cambiar un valor requiere editar el archivo y recompilar.
 
 - [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM y qué incluye hoy.
   - [Introducción](#introducción) -- Qué es AutoDiscoveryIAM, qué problema resuelve y cómo está organizado su repositorio.
-  - [Qué incluye hoy](#qué-incluye-hoy) -- Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
+  - [¿Qué incluye?](#qué-incluye) -- Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
 - [Seguridad y RBAC](#seguridad-y-rbac) -- Autorización, auditoría, soft-delete y manejo de datos de terceros.
   - [Autorización con niveles de acceso](#autorización-con-niveles-de-acceso) -- Niveles de acceso, permisos descubiertos automáticamente y los dos ejes de autorización independientes.
   - [Reutilizar auditoría y soft-delete](#reutilizar-auditoría-y-soft-delete) -- Cómo reutilizar la auditoría y el soft-delete de la librería en tus propias entidades.
@@ -170,9 +170,9 @@ Este repositorio tiene 5 partes con propósitos distintos:
 - **`runsettings/`** — perfiles de ejecución de pruebas (`normal`/`coverage`/`performance`/`security`/`ci-full`). Son varios y no uno solo porque cada combinación de filtro/cobertura/paralelismo tiene un costo de tiempo muy distinto.
 - **`docker/`** — Docker Compose para levantar el contenedor del `SampleHost` sin instalar el SDK de .NET en tu máquina — el mismo trato que ya le das a cualquier stack en Docker: un solo comando y la API está corriendo. La base de datos **no** viene incluida a propósito: necesitas tu propio SQL Server alcanzable, apuntado vía cadena de conexión.
 
-Para empezar a usar la librería en tu propio proyecto, ve directo a [Instalación](#instalación-1). Si quieres ver primero qué trae hoy la librería en detalle (autenticación, RBAC dinámico, 2FA, etc.), revisa [Qué incluye hoy](#qué-incluye-hoy).
+Para empezar a usar la librería en tu propio proyecto, ve directo a [Instalación](#instalación-1). Si quieres ver primero qué trae hoy la librería en detalle (autenticación, RBAC dinámico, 2FA, etc.), revisa [¿Qué incluye?](#qué-incluye).
 
-### Qué incluye hoy
+### ¿Qué incluye?
 
 [< Fundamentos](#fundamentos)
 
@@ -1156,7 +1156,7 @@ Si repites la misma versión del paquete (ver punto anterior) y luego ves un tip
 
 ---
 
-La librería está construida internamente con **Vertical Slice Architecture** (ver [Qué incluye hoy](#qué-incluye-hoy)) — un Command/Query por carpeta, con su propio `Handler`, `Repository`, `DI` y `EndPoint`, sin capa MVC/Controllers y sin MediatR. Nada te obliga a seguir el mismo patrón en tu propia app (un `DbContext` + minimal APIs normales funcionan igual de bien), pero si tu equipo no tiene ya una arquitectura definida, te damos un ejemplo completo y funcional para que la adoptes si te sirve — queda naturalmente compatible con el resto de la librería, y es la misma arquitectura que ya viste en [Reutilizar auditoría y soft-delete en tus propias entidades](#reutilizar-auditoría-y-soft-delete).
+La librería está construida internamente con **Vertical Slice Architecture** (ver [¿Qué incluye?](#qué-incluye)) — un Command/Query por carpeta, con su propio `Handler`, `Repository`, `DI` y `EndPoint`, sin capa MVC/Controllers y sin MediatR. Nada te obliga a seguir el mismo patrón en tu propia app (un `DbContext` + minimal APIs normales funcionan igual de bien), pero si tu equipo no tiene ya una arquitectura definida, te damos un ejemplo completo y funcional para que la adoptes si te sirve — queda naturalmente compatible con el resto de la librería, y es la misma arquitectura que ya viste en [Reutilizar auditoría y soft-delete en tus propias entidades](#reutilizar-auditoría-y-soft-delete).
 
 El ejemplo usa la entidad `UserProfile` y el `ApplicationDbContext` de esa misma sección (contexto único, hereda `AutoDiscoveryIAMDbContext`): un Command (`CreateUserProfile`) y una Query (`GetUserProfiles`), con la misma estructura de archivos por carpeta que usa la librería (ver `src/AutoDiscoveryIAM/Features/Roles/Commands/CreateRole/` en este repo como referencia 1:1).
 

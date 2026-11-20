@@ -14,7 +14,7 @@
 
 - [Instalación](/tutorials/getting-started/installation): agrega la librería a tu proyecto paso a paso.
 - [Introducción](/docs/fundamentals/introduction): qué es y cómo está organizado el repositorio.
-- [Qué incluye hoy](/docs/fundamentals/whats-included): las funcionalidades disponibles.
+- [¿Qué incluye?](/docs/fundamentals/whats-included): las funcionalidades disponibles.
 - [Autorización con niveles de acceso](/docs/security-rbac/authorization): cómo se decide quién puede hacer qué.
 - [Configuración](/references/configuration-testing/configuration): todas las claves disponibles.
 

@@ -39,7 +39,7 @@
 
 ## Índice Docs
 
-- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM y qué incluye hoy.
+- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM, qué problema resuelve y qué funcionalidades incluye.
   - [Introducción](#introducción) -- Qué es AutoDiscoveryIAM, qué problema resuelve y cómo está organizado su repositorio.
   - [¿Qué incluye?](#qué-incluye) -- Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
 - [Seguridad y RBAC](#seguridad-y-rbac) -- Autorización, auditoría, soft-delete y manejo de datos de terceros.
@@ -482,7 +482,7 @@ remota sin tocar `db/`, o `db/` solo para tener algo con qué probar sin levanta
 ## Índice Tutoriales
 
 - [Instalación](#instalación) -- Instala la librería, corre el host de ejemplo o empaqueta tu propia versión.
-  - [Instalación](#instalación-1) -- Instala FrugoCorp.AspNetCore.AutoDiscoveryIAM paso a paso: crea el proyecto, agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones iniciales con dotnet ef.
+  - [Instalación](#instalación-1) -- Instala AutoDiscoveryIAM paso a paso: agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones.
   - [Actualizar AutoDiscoveryIAM](#actualizar-autodiscoveryiam) -- Cómo actualizar el paquete en una app que ya lo usa, sin perder datos, roles ni asignaciones.
   - [Correr el SampleHost](#correr-el-samplehost) -- Cómo ejecutar el host de ejemplo para explorar la API completa desde Swagger UI o Scalar.
   - [Empaquetar la librería desde tu fork](#empaquetar-la-librería-desde-tu-fork) -- Cómo generar tu propio paquete NuGet de la librería a partir de un fork.
@@ -2615,6 +2615,7 @@ src/app/
 **Cuándo crear un bounded context nuevo vs. un feature slice nuevo dentro de uno existente**: un bounded context nuevo es cuando el dominio tiene su propio lenguaje/modelo que no comparte con los demás (ej. "Facturación" y "Catálogo de productos" casi nunca coinciden en qué significa "item" — uno lo ve como una línea de cobro, el otro como un producto con inventario); un feature slice nuevo es cuando ya estás dentro del mismo dominio, solo agregando otro caso de uso al mismo lenguaje/modelo. La pregunta práctica: si dos partes del sitio necesitaran modelos de datos incompatibles para lo que a simple vista "suena igual", son bounded contexts distintos, no dos features del mismo.
 <!-- autodiscoveryiam:doc_body_end -->
 <!-- autodiscoveryiam:doc_end -->
+
 
 
 

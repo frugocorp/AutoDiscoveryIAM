@@ -36,7 +36,7 @@
 
 ## Índice Docs
 
-- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM y qué incluye hoy.
+- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM, qué problema resuelve y qué funcionalidades incluye.
   - [Introducción](#introducción) -- Qué es AutoDiscoveryIAM, qué problema resuelve y cómo está organizado su repositorio.
   - [¿Qué incluye?](#qué-incluye) -- Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
 - [Seguridad y RBAC](#seguridad-y-rbac) -- Autorización, auditoría, soft-delete y manejo de datos de terceros.
@@ -427,7 +427,7 @@ La licencia [MIT](https://autodiscoveryiam.frugocorp.com/license) de este proyec
 ## Índice Tutoriales
 
 - [Instalación](#instalación) -- Instala la librería, corre el host de ejemplo o empaqueta tu propia versión.
-  - [Instalación](#instalación-1) -- Instala FrugoCorp.AspNetCore.AutoDiscoveryIAM paso a paso: crea el proyecto, agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones iniciales con dotnet ef.
+  - [Instalación](#instalación-1) -- Instala AutoDiscoveryIAM paso a paso: agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones.
   - [Actualizar AutoDiscoveryIAM](#actualizar-autodiscoveryiam) -- Cómo actualizar el paquete en una app que ya lo usa, sin perder datos, roles ni asignaciones.
 - [Ejemplos](#ejemplos) -- Ejemplos para construir tus propias features sobre la librería.
   - [Vertical Slice en tu propia app](#vertical-slice-en-tu-propia-app) -- Cómo construir una feature con Vertical Slice Architecture en tu propia aplicación.

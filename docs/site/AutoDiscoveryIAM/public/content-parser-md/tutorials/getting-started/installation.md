@@ -1,7 +1,7 @@
 ---
 [slug]: installation
 [title]: Instalación
-[description]: Instala FrugoCorp.AspNetCore.AutoDiscoveryIAM paso a paso: crea el proyecto, agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones iniciales con dotnet ef.
+[description]: Instala AutoDiscoveryIAM paso a paso: agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones.
 [keywords]: instalación AutoDiscoveryIAM, dotnet add package, appsettings.json JWT, dotnet ef migrations, RBAC ASP.NET Core
 ---
 

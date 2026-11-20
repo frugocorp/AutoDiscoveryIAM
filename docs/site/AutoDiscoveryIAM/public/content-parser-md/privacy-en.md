@@ -1,7 +1,8 @@
 ---
 [slug]: privacy-en
 [title]: Privacy Policy
-[description]: Privacy policy for AutoDiscoveryIAM.
+[description]: Privacy policy for the AutoDiscoveryIAM site: what information is collected, cookies, third parties, security and contact.
+[keywords]: privacy policy, AutoDiscoveryIAM, cookies, personal data
 [robots]: index, follow
 [nav]: false
 [readme_ignored]: la politica de privacidad es contenido del SITIO (footer), no documentacion del paquete -- no debe permear al README generado

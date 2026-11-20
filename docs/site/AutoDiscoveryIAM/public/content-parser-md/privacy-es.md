@@ -1,7 +1,8 @@
 ---
 [slug]: privacy-es
 [title]: Política de Privacidad
-[description]: Política de privacidad de AutoDiscoveryIAM.
+[description]: Política de privacidad del sitio de AutoDiscoveryIAM: qué información se recopila, uso de cookies, terceros, seguridad y contacto.
+[keywords]: política de privacidad, AutoDiscoveryIAM, cookies, datos personales
 [robots]: index, follow
 [nav]: false
 [readme_ignored]: la politica de privacidad es contenido del SITIO (footer), no documentacion del paquete -- no debe permear al README generado

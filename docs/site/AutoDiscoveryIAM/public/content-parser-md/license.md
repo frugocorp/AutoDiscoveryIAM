@@ -1,7 +1,8 @@
 ---
 [slug]: license
 [title]: Licencia (MIT)
-[description]: Licencia MIT de AutoDiscoveryIAM.
+[description]: Texto completo de la licencia MIT de AutoDiscoveryIAM: puedes usar, modificar y redistribuir la librería libremente.
+[keywords]: licencia MIT, AutoDiscoveryIAM, código abierto, NuGet
 [nav]: false
 [readme_ignored]: el repositorio y el paquete ya incluyen su propio archivo de licencia
 ---

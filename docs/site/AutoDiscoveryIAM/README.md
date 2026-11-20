@@ -132,7 +132,7 @@ Cambiar un valor requiere editar el archivo y recompilar.
 
 ## Índice Docs
 
-- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM y qué incluye hoy.
+- [Fundamentos](#fundamentos) -- Qué es AutoDiscoveryIAM, qué problema resuelve y qué funcionalidades incluye.
   - [Introducción](#introducción) -- Qué es AutoDiscoveryIAM, qué problema resuelve y cómo está organizado su repositorio.
   - [¿Qué incluye?](#qué-incluye) -- Funcionalidades disponibles hoy en la librería: autenticación, RBAC dinámico, 2FA y más.
 - [Seguridad y RBAC](#seguridad-y-rbac) -- Autorización, auditoría, soft-delete y manejo de datos de terceros.
@@ -575,7 +575,7 @@ remota sin tocar `db/`, o `db/` solo para tener algo con qué probar sin levanta
 ## Índice Tutoriales
 
 - [Instalación](#instalación) -- Instala la librería, corre el host de ejemplo o empaqueta tu propia versión.
-  - [Instalación](#instalación-1) -- Instala FrugoCorp.AspNetCore.AutoDiscoveryIAM paso a paso: crea el proyecto, agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones iniciales con dotnet ef.
+  - [Instalación](#instalación-1) -- Instala AutoDiscoveryIAM paso a paso: agrega el paquete NuGet, conecta tu base de datos, configura appsettings.json y aplica las migraciones.
   - [Actualizar AutoDiscoveryIAM](#actualizar-autodiscoveryiam) -- Cómo actualizar el paquete en una app que ya lo usa, sin perder datos, roles ni asignaciones.
   - [Correr el SampleHost](#correr-el-samplehost) -- Cómo ejecutar el host de ejemplo para explorar la API completa desde Swagger UI o Scalar.
   - [Empaquetar la librería desde tu fork](#empaquetar-la-librería-desde-tu-fork) -- Cómo generar tu propio paquete NuGet de la librería a partir de un fork.

@@ -80,10 +80,10 @@ Para empezar a usar la librería en tu propio proyecto, ve directo a [Instalaci�
 
 ---
 
-- **Autenticación JWT** con access + refresh token, rotación y detección de reuso, blacklist de tokens por `jti`, e invalidación global inmediata al cambiar contraseña (`TokenValidFrom`).
-- **Autenticación de dos factores (2FA)** por correo o app autenticadora (TOTP), y **login social con Google** (vinculación de cuenta externa).
+- **Autenticación JWT** con access + refresh token, rotación y detección de reuso (con ventana de gracia opcional para reintentos), refresh token en el cuerpo o en cookie HttpOnly, blacklist de tokens por `jti`, e invalidación global inmediata al cambiar contraseña (`TokenValidFrom`).
+- **Autenticación de dos factores (2FA)** por correo o app autenticadora (TOTP), con verificación step-up del Authenticator para las acciones sensibles de tu app (`ITwoFactorStepUpService`), y **login social con Google** (vinculación de cuenta externa).
 - **RBAC dinámico**: los permisos (`Users`, `Roles`, `Permissions`) no se declaran a mano — se descubren automáticamente leyendo `EndpointDataSource` (la tabla de ruteo nativa de ASP.NET Core, no reflexión ni OpenAPI) y se sincronizan a base de datos. Autorización "secure by default": todo endpoint requiere un permiso salvo que se marque explícitamente lo contrario, con una regla de no escalada (nadie otorga ni administra permisos que no tiene).
-- **Ciclo de vida de cuenta completo**: registro, activación por correo, aprobación/rechazo de cuentas, recuperación y cambio de contraseña.
+- **Ciclo de vida de cuenta completo**: registro, activación por correo, aprobación/rechazo de cuentas, recuperación y cambio de contraseña. Cada forma de registro (correo y contraseña, Google) se prende o se apaga por separado (`Registration`), un administrador puede dar de alta usuarios aunque el registro público esté apagado (con una contraseña inicial que el usuario debe cambiar al entrar, o sin contraseña, enviándole un solo correo para definirla), y la aprobación de un administrador puede hacerse obligatoria después de confirmar el correo (`Registration:RequireAdminApproval`).
 - **Rate limiting** (limitador nativo de ASP.NET Core) y **logging de eventos de seguridad** centralizado.
 - **Soft delete** consistente en todas las entidades principales, con endpoints de restauración.
 - **Documentación OpenAPI nativa** (`Microsoft.AspNetCore.OpenApi`, no Swashbuckle) servida en `/openapi/{documentName}.json` — el renderizador (Swagger UI en la raíz, Scalar en `/scalar`) es intercambiable sin tocar el núcleo, probado en vivo con ambos a la vez.
@@ -119,8 +119,8 @@ Todo endpoint queda protegido por RBAC estándar salvo que se marque explícitam
 
 El package siembra dos roles al arrancar, siempre:
 
-- **`AdminAutoDiscoveryIAM`** — administra la app desde el primer día, sin ningún flag especial: consulta usuarios, roles y permisos; crea, edita y restaura roles; les asigna y quita permisos; asigna roles a usuarios, y aprueba o rechaza registros. Puede darse a sí mismo o a otros roles cualquier permiso, incluidos los de tus propios endpoints después de sincronizar. No puede cambiar `IsAdmin`/`IsDevelopment`/`IsSuAdmin` ni correr el sync: eso sigue detrás de los flags.
-- **`UserDefault`** — nace sin ningún permiso. Pensado para asignarse automáticamente a usuarios auto-registrados; el equipo dev le agrega los permisos que su app necesite. Puede eliminarse o renombrarse — si se reemplaza, basta con marcar `IsDefaultForNewUser=true` en el rol sustituto directamente en la base de datos.
+- **`AdminAutoDiscoveryIAM`** — administra la app desde el primer día, sin ningún flag especial: consulta usuarios, roles y permisos; da de alta usuarios (`POST /users/by-admin`); crea, edita y restaura roles; les asigna y quita permisos; asigna roles a usuarios, y aprueba o rechaza registros. Puede darse a sí mismo o a otros roles cualquier permiso, incluidos los de tus propios endpoints después de sincronizar. No puede cambiar `IsAdmin`/`IsDevelopment`/`IsSuAdmin` ni correr el sync: eso sigue detrás de los flags.
+- **`UserDefault`** — nace sin ningún permiso. Se asigna automáticamente a todo usuario nuevo, sin importar el camino que lo crea: registro por correo (`POST /users`), alta con un proveedor externo (Google) o alta hecha por un administrador (`POST /users/by-admin`). El equipo dev le agrega los permisos que su app necesite. Puede eliminarse o renombrarse — si se reemplaza, basta con marcar `IsDefaultForNewUser=true` en el rol sustituto directamente en la base de datos. Si ningún rol activo tiene la marca, el usuario nuevo nace sin roles.
 
 La API rechaza asignar, vía `RolePermission`, un permiso `[RequiresDevelopmentAccess]`/`[RequiresSuAdminAccess]` a un rol que ya tiene `IsDefaultForNewUser=true`. **Esto no cubre el camino inverso**: como `IsDefaultForNewUser` solo se marca por acceso directo a la base de datos (sin endpoint, ver arriba), nada en la aplicación puede impedir que alguien marque como default un rol que _ya_ tenía esos permisos asignados desde antes. Es el mismo nivel de confianza que ya se le da a quien administra la base de datos para el resto de asignaciones sensibles — no es un hueco explotable por un usuario, solo una operación manual que hay que hacer con cuidado.
 
@@ -193,10 +193,86 @@ curl -X POST https://tu-api/permissions/sync \
 - Renombrar un slice cambia su clave: el permiso anterior se marca como obsoleto (nunca se borra) y se crea uno nuevo, que hay que volver a asignar.
 - Con `"dryRun": true` ves qué cambiaría sin escribir nada.
 
+##### Sincroniza desde código, sin login HTTP
+
+En un pipeline de despliegue no hace falta un usuario `IsDevelopment` ni levantar el servidor. `app.SyncAutoDiscoveryIAMPermissionsAsync()` hace la misma sincronización desde `Program.cs`. Va **después** de `app.MapAutoDiscoveryIAMEndpoints()` y de mapear tus propios endpoints: el sync lee la tabla de rutas, y lo que todavía no está mapeado no existe para él. Un patrón común es una bandera de arranque que sincroniza y termina:
+
+```csharp
+app.MapAutoDiscoveryIAMEndpoints();
+app.MapPedidosEndpoints(); // tus endpoints
+
+await app.SeedAutoDiscoveryIAMDefaultDataAsync();
+
+if (args.Contains("--sync-permissions", StringComparer.Ordinal))
+{
+  var sync = await app.SyncAutoDiscoveryIAMPermissionsAsync();
+  Console.WriteLine($"{sync.OrchestrationResult.PermissionsCreated} permisos nuevos");
+  return;
+}
+
+app.Run();
+```
+
+- En el despliegue: `dotnet MiApi.dll --sync-permissions` después de aplicar las migraciones, y luego arranca la app normal.
+- Acepta las mismas opciones que el endpoint: `app.SyncAutoDiscoveryIAMPermissionsAsync(new SyncPermissionsRequestDto(DryRun: true))`.
+- Devuelve el mismo resultado que el endpoint (permisos nuevos, actualizados, obsoletos y `EndpointsWithoutPermission`).
+- Si se llama antes de mapear los endpoints, o si el sync falla (por ejemplo, una clave duplicada), lanza `InvalidOperationException`: el proceso termina con error y el pipeline se detiene.
+- No resuelvas `SyncPermissionsHandler` a mano antes de `app.Run()`: hasta que la app arranca, ASP.NET Core no conecta las rutas mapeadas a su `EndpointDataSource`, y el sync no encontraría ningún endpoint. La extensión lee las rutas directo de la app.
+- El SampleHost del repositorio trae la bandera `--sync-permissions` como ejemplo.
+- No agrega ninguna ruta HTTP: solo lo corre quien ejecuta el proceso de la app, y la bandera sale de sus argumentos de línea de comandos, nunca de una petición. Por HTTP, el único camino sigue siendo `POST /permissions/sync`, que exige `IsDevelopment`. Tampoco otorga permisos: solo crea, actualiza y marca obsoletos.
+
 ##### Qué reporta y qué rechaza el sync
 
 - **`endpointsWithoutPermission`** en la respuesta lista los endpoints que exigen un permiso pero cuyo namespace no sigue la convención. Muévelos bajo `Features`, o márcalos con `[PermissionsNotRequired]`, `[RequiresDevelopmentAccess]` o `[RequiresSuAdminAccess]` si no deben depender de un rol.
 - **Una clave duplicada hace fallar el sync con un 400** que nombra los dos namespaces. Pasa cuando dos slices distintos producen la misma clave, por ejemplo tu `MiApi.Features.Users.Commands.CreateUser` contra el `users.create_user` de la propia librería. Renombra tu feature o tu acción: si no, quien tuviera uno de los dos permisos entraría también al otro sin que nadie lo decida.
+
+#### Verificación step-up con el Authenticator
+
+Para una acción sensible de tu app (firmar, borrar algo importante, cambiar datos de pago), puedes pedirle al usuario que ya inició sesión un código de su app autenticadora. `ITwoFactorStepUpService` lo verifica con las mismas protecciones que el segundo factor del login:
+
+- Un código ya usado, o uno anterior, no vuelve a servir: el paso de tiempo aceptado queda guardado en la base.
+- Cada código incorrecto cuenta para el bloqueo de la cuenta, con el mismo contador y los mismos `Lockout:MaxFailedAttempts`/`LockoutMinutes` del login. Al llegar al máximo, la cuenta queda bloqueada también para iniciar sesión.
+- Quien tenga una sesión robada puede fallar códigos a propósito para bloquear al dueño: es la misma exposición que ya tiene el login con contraseña. El bloqueo no cierra las sesiones abiertas y vence solo al terminar `LockoutMinutes`; el dueño lo quita antes restableciendo su contraseña (ver «Si alguien roba una sesión», más abajo).
+
+La librería no expone un endpoint para esto: la verificación solo vale dentro del endpoint que hace la acción. Inyecta el servicio en el tuyo:
+
+```csharp
+app.MapPost("/pedidos/{id}/cancelar", async (
+  Guid id,
+  CancelarPedidoRequest request,
+  ITwoFactorStepUpService stepUp,
+  HttpContext context,
+  CancellationToken cancellationToken) =>
+{
+  var result = await stepUp.VerifyCurrentUserAsync(
+    request.Codigo,
+    context.Connection.RemoteIpAddress?.ToString(),
+    cancellationToken);
+
+  return result.Status switch
+  {
+    TwoFactorStepUpStatus.Verified => Results.Ok(/* cancela el pedido */),
+    TwoFactorStepUpStatus.LockedOut => Results.StatusCode(StatusCodes.Status423Locked),
+    TwoFactorStepUpStatus.NotEnrolled => Results.Problem("Activa el Authenticator para esta operación.", statusCode: StatusCodes.Status403Forbidden),
+    _ => Results.Unauthorized(),
+  };
+});
+```
+
+- `VerifyCurrentUserAsync` usa el usuario del JWT de la petición; `VerifyAsync(userPublicId, ...)` recibe el `PublicId` explícito.
+- Resultados: `Verified`, `InvalidCode` (incorrecto, vencido o ya usado), `LockedOut` (con `LockoutEnd`), `NotEnrolled` (el usuario no tiene el Authenticator activo) y `UserNotFound` (sin sesión, o usuario inexistente o inactivo).
+- Solo aplica al método Authenticator. El enrolamiento sigue siendo `POST /users/me/2fa/authenticator/enroll`, que devuelve el secreto en Base32 y la URI `otpauth://` con el `TwoFactor:Issuer` de tu configuración. La librería nunca genera la imagen del QR: tu cliente la dibuja con la librería que elijas.
+- Agrega una regla de `RateLimiting` para tu endpoint (por ejemplo `post:/pedidos/*/cancelar`, 10 por minuto), igual que las rutas de 2FA de la librería.
+
+#### Si alguien roba una sesión
+
+El camino del dueño es "olvidé mi contraseña" (`POST /users/password/reset/request` y `POST /users/password/reset/confirm`). Al confirmar la contraseña nueva:
+
+- Se revocan todos los refresh tokens del usuario: ninguna sesión abierta puede renovarse.
+- Los access tokens ya emitidos dejan de valer en la siguiente petición (`TokenValidFrom`), sin esperar a que expiren.
+- Se quita el bloqueo por intentos fallidos y el correo queda confirmado.
+
+El reenvío de activación por un administrador (`POST /users/{publicId}/activation/resend`) no es el camino para una cuenta robada: solo aplica a cuentas inactivas, y una cuenta robada sigue activa. Tampoco puede quien robó la sesión cambiar el correo de la cuenta a escondidas: el cambio de correo pasa por la revisión de un administrador y lo ejecuta un `IsSuAdmin`.
 
 ### Reutilizar auditoría y soft-delete
 
@@ -826,7 +902,7 @@ Para ver todo esto ya funcionando sin integrarlo primero a tu propio proyecto, c
 
 La librería no trae migraciones: su modelo vive en el paquete y las migraciones son de tu app, así que actualizarla es el mismo flujo de EF Core que ya usas para tus propias entidades.
 
-1. Lee las [notas de la versión](https://github.com/frugocorp/AutoDiscoveryIAM/releases) (las mismas del CHANGELOG del repositorio). Mientras la versión sea `0.y.z`, cualquier versión menor puede traer cambios incompatibles.
+1. Lee las [notas de la versión](https://github.com/frugocorp/AutoDiscoveryIAM/releases) (las mismas del CHANGELOG del repositorio), empezando por la sección `Breaking`. Mientras la versión sea `0.y.z`, cualquier versión menor puede traer cambios incompatibles.
 2. Actualiza el paquete: `dotnet add package FrugoCorp.AspNetCore.AutoDiscoveryIAM --version <nueva>`.
 3. Genera una migración y revísala. Debe contener solo los cambios de esquema que anuncia el CHANGELOG, o ninguno:
 
@@ -838,11 +914,16 @@ La librería no trae migraciones: su modelo vive en el paquete y las migraciones
    ````
 
 4. Despliega. Al arrancar, `SeedAutoDiscoveryIAMDefaultDataAsync()` aplica una sola vez por base de datos los cambios de **datos** del paquete (los registra en la tabla `AutoDiscoveryIAMUpgrades`) y después agrega al rol `AdminAutoDiscoveryIAM` los permisos por defecto nuevos. Los roles, asignaciones y usuarios existentes quedan como estaban.
-5. Corre `POST /permissions/sync` para que los endpoints nuevos de la librería obtengan su permiso.
+5. Sincroniza los permisos para que los endpoints nuevos de la librería obtengan el suyo: `POST /permissions/sync`, o `app.SyncAutoDiscoveryIAMPermissionsAsync()` desde tu pipeline de despliegue (ver [Autorización](#autorización-con-niveles-de-acceso)).
 
 El paquete mantiene estables las claves de permiso entre versiones. Si algún día hay que renombrar un slice de la librería, la propia actualización mueve sus asignaciones de rol a la clave nueva, para que nadie pierda acceso.
 
-Para probar una versión nueva en tu proyecto real antes de publicarla, empaquétala a un feed local con una versión preliminar única (`0.2.0-local.1`, `0.2.0-local.2`...) e instálala desde ahí, como se explica en [Empaquetar la librería desde tu fork y probarla en otro proyecto](https://autodiscoveryiam.frugocorp.com/tutorials/getting-started/package-library).
+#### Qué garantiza cada versión
+
+- **Cambios incompatibles anunciados.** Todo lo que deja de funcionar igual que en la versión anterior aparece en la sección `Breaking` del CHANGELOG, con el tipo de cambio (código fuente, binario, comportamiento o esquema), a quién afecta y qué hacer. Si una entrada no te aplica, la actualización no te pide nada más que la migración.
+- **API pública verificada por herramienta.** Cada paquete se compara contra la última versión publicada con la validación de paquete del SDK de .NET: una ruptura de la API pública que no esté declarada detiene la publicación. Que se anuncie no depende de que alguien la recuerde.
+- **Probada como la usarías tú.** Antes de publicar, el paquete se instala en una app externa igual que en la tuya, en una base nueva y actualizando una base creada con la versión anterior.
+- **Claves de permiso y datos estables.** Una clave de permiso no cambia sin un paso de actualización que mueva sus asignaciones, y la actualización nunca borra roles, permisos ni usuarios.
 
 ## Ejemplos
 
@@ -1279,6 +1360,36 @@ Este ejemplo incluye todas las piezas completas a propósito — es más fácil 
 
 A diferencia de un ejemplo con dos `DbContext` separados, aquí `CreateUserProfileHandler` inyecta y usa directamente `IAutoDiscoveryIAMUnitOfWork` (de la librería, `FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data.UoW`) — no necesitas construir tu propio Unit of Work. En modo contexto único, `ApplicationDbContext` **es** (por herencia) un `AutoDiscoveryIAMDbContext`, así que `IAutoDiscoveryIAMUnitOfWork.SaveChangesAsync()` guarda también tus propias entidades (`UserProfile`), porque es literalmente la misma instancia de `DbContext` detrás de ambos. Si en cambio usaras dos `DbContext` separados, sí necesitarías tu propio Unit of Work para el tuyo (ver [Elige tu propio DbContext: uno o dos](https://autodiscoveryiam.frugocorp.com/docs/security-rbac/audit-soft-delete#elige-tu-propio-dbcontext-uno-o-dos)).
 
+#### Crear el usuario y su perfil en una sola operación
+
+Si tu app da de alta personas con sus datos propios (por ejemplo `POST /empleados`), no llames al endpoint `POST /users/by-admin` y luego a tu slice: inyecta `IUserProvisioningService` (`FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.Provisioning`) en tu handler. Aplica las mismas reglas que `POST /users/by-admin`: valida usuario, correo y fuerza de la contraseña (400), rechaza un correo o usuario repetido (409), asigna el rol por defecto, envía el correo de invitación o de activación, deja el correo sin verificar y `MustChangePassword` en `true` salvo que pidas `false`. Es un uso soportado y estable entre versiones.
+
+La sobrecarga con `beforeSave` te entrega el usuario nuevo, todavía sin guardar, para que agregues tu entidad ligada a él. Se liga por navegación (`User = user`), porque el usuario aún no tiene `Id`:
+
+```csharp
+var result = await provisioning.CreateAsync(
+    new ProvisionUserRequest(command.Username, command.Email, Password: null, Activate: false),
+    (user, ct) =>
+    {
+        context.UserProfiles.Add(new UserProfile { User = user, Occupation = command.Occupation });
+        return Task.CompletedTask;
+    },
+    cancellationToken);
+if (!result.Success)
+{
+    return OperationResult.Fail<CrearEmpleadoResponseDto>(result.ErrorInfo!, result.Error!);
+}
+```
+
+Qué garantiza:
+
+- **Todo o nada.** El usuario, su rol por defecto y tu entidad se guardan en un solo `SaveChangesAsync`. Si `beforeSave` lanza una excepción, no se guarda nada, no sale ningún correo y el usuario sale del contexto, así que un guardado posterior tampoco lo crea. La excepción sale tal cual.
+- **El correo va después de tu código.** El correo de invitación o activación se envía después de `beforeSave` y antes de guardar: un fallo tuyo no deja una invitación para una cuenta que no existe.
+- **`beforeSave` solo enlaza.** Si cambia el correo, el usuario, la contraseña, el estado, la verificación o las banderas de administración (`IsAdmin`, `IsDevelopment`, `IsSuAdmin`), el alta se cancela con `InvalidOperationException`.
+- **Mismo `DbContext`.** Para guardar junto, tu entidad tiene que vivir en el mismo contexto que el usuario: el modo de contexto único de este ejemplo (`ApplicationDbContext` hereda de `AutoDiscoveryIAMDbContext`). Con dos contextos separados, cada uno guarda por su cuenta.
+
+El servicio no revisa permisos: tu endpoint tiene su propio permiso (por ejemplo `empleados.crear_empleado`, que aparece con el sync), y con él decides quién puede dar altas. La regla de no escalar privilegios se sigue aplicando al guardar.
+
 ## Referencias
 
 [REGRESAR A APARTADOS](#apartados)
@@ -1383,8 +1494,9 @@ Ya trae un default seguro embebido en código — solo la tocas si quieres cambi
 | Sección                           | Default                                                                                                                                               | Se puede sobreescribir parcialmente (ej. solo un campo) |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `JwtSettings.ExpiryMinutes`       | `15`                                                                                                                                                  | ✅                                                      |
-| `RefreshTokenSettings`            | `ExpiryDays: 7`, `TokenLength: 32`                                                                                                                    | ✅                                                      |
+| `RefreshTokenSettings`            | `ExpiryDays: 7`, `TokenLength: 32`, `ReuseGracePeriodSeconds: 0` (ventana de gracia apagada), `Delivery: Body` (refresh token en el cuerpo JSON; `Cookie` o `Both` para la cookie HttpOnly). Ver las notas debajo de la tabla | ✅                                                      |
 | `Activation`                      | `EmailVerificationTokenLength: 64`, `EmailVerificationTokenExpiryMinutes: 30`, `ActivationResendCooldownSeconds: 60`, `ActivationResendMaxPerHour: 5`, `MinimumResponseMilliseconds: 1000` (duración mínima del reenvío público, exista o no la cuenta) | ✅                                                      |
+| `Registration`                    | `EmailPasswordEnabled: true` (registro público en `POST /users`), `ExternalProviders: {}` (cada proveedor externo crea cuentas nuevas salvo que lo apagues, por ejemplo `"Google": false`), `RequireAdminApproval: false` (con `true`, quien se registra solo queda en `pending_approval` aunque confirme su correo, hasta `POST /users/{publicId}/approve`; no aplica a las altas de un administrador), `PasswordSetupLinkExpiryHours: 72` (vigencia del enlace para definir la contraseña cuando un administrador crea la cuenta sin contraseña). Pueden quedar todas las formas apagadas: entonces solo un administrador da de alta usuarios. Apagar una forma nunca impide iniciar sesión a quien ya tiene cuenta; el endpoint apagado responde 403 `REGISTRATION_DISABLED` | ✅                                                      |
 | `PasswordReset`                   | `TokenLength: 64`, `TokenExpiryMinutes: 30`, `MinimumResponseMilliseconds: 1000` (duración mínima de la solicitud, exista o no la cuenta)               | ✅                                                      |
 | `Lockout`                         | `MaxFailedAttempts: 5`, `LockoutMinutes: 60`                                                                                                          | ✅                                                      |
 | `TwoFactor`                       | `CodeLength: 6`, `CodeExpiryMinutes: 5`, `ChallengeTokenExpiryMinutes: 10`, `Issuer: "AutoDiscoveryIAM"`                                              | ✅                                                      |
@@ -1400,7 +1512,11 @@ No hace falta declarar ninguna sección de esta tabla en tu propio `appsettings.
 
 > **Límites por defecto de `RateLimiting`.** Usa el limitador nativo de ASP.NET Core (`Microsoft.AspNetCore.RateLimiting`), sin dependencias externas. Por IP: login y verificación 2FA, 10 por minuto y 60 por hora; refresh, 30 por minuto; canje del código de login externo, 10 por minuto; solicitud de restablecimiento de contraseña y reenvío de activación, 5 por minuto y 20 por hora; confirmación de restablecimiento y de activación, 10 por minuto y 60 por hora; cambio de contraseña y operaciones de 2FA del propio usuario, 10 por minuto; eliminación de la propia cuenta (`DELETE /users/me`, que pide la contraseña actual), 10 por minuto; registro (`POST /users`), 5 por minuto y 30 por hora; inicio y callback del login con Google (`GET /auth/google*`), 20 por minuto; vinculación de la cuenta de Google, 10 por minuto; solicitud de cambio de email, 3 por minuto y 10 por hora. Cada regla tiene `Endpoint` (`*` para todas las rutas, o `metodo:/ruta` con `*` como comodín, ej. `post:/auth/login*`), `Period` (`30s`, `1m`, `1h`, `1d`) y `Limit`. Para cambiar un límite de la librería, declara en `RateLimiting:Rules` una regla con el mismo `Endpoint` y `Period` (por ejemplo `{ "Endpoint": "post:/auth/login*", "Period": "1m", "Limit": 30 }`): la tuya reemplaza a la de la librería. Si varias reglas aplican a una petición, se exigen todas; una regla `*` cuenta en un solo contador todas las peticiones de la IP, sin importar la ruta. `RateLimiting:EndpointWhitelist` exime rutas de todas las reglas (ej. `"get:/openapi/*"`). Al pasar el límite, la API responde 429 con el header `Retry-After` y el mismo formato de error que el resto de los endpoints. Una regla mal escrita detiene el arranque. La IP del cliente es siempre la de la conexión (`RemoteIpAddress`), nunca un header que mande el propio cliente (como `X-Real-IP`); detrás de un proxy inverso, la IP real llega con `app.UseForwardedHeaders()`, que solo acepta `X-Forwarded-For` de los proxies de confianza de la sección `ForwardedHeaders` (ver la fila de la tabla). Los contadores viven en memoria de cada instancia: con varias instancias detrás de un balanceador, el límite efectivo se multiplica por el número de instancias. Las reglas se comparan contra la ruta real, por eso `MapAutoDiscoveryIAMEndpoints()` no se puede llamar dentro de `MapGroup(...)`: la app no arranca. Para servir la API bajo un prefijo, usa `app.UsePathBase("/prefijo")`.
 
-> **Valores validados al arranque.** Estas secciones tienen default, pero un valor fuera de rango detiene el arranque en vez de dejar la protección rota sin aviso: `JwtSettings:Key` de al menos 32 bytes (se mide en UTF-8, así que un carácter acentuado cuenta doble) y `JwtSettings:ExpiryMinutes` entre 1 y 1440; `RefreshTokenSettings:TokenLength` de al menos 32 y `ExpiryDays` de al menos 1; `Lockout:MaxFailedAttempts` y `Lockout:LockoutMinutes` de al menos 1; `TwoFactor:CodeLength` entre 6 y 9, y `CodeExpiryMinutes`/`ChallengeTokenExpiryMinutes` de al menos 1.
+> **Ventana de gracia del refresh token.** Cada refresh revoca el token usado, y reusarlo se trata como robo: se revoca toda la sesión del usuario. Eso también corta a un cliente legítimo que reintenta porque se perdió la respuesta, o que lanza dos refresh a la vez (una tablet con red inestable, dos pestañas). Con `RefreshTokenSettings:ReuseGracePeriodSeconds` en N (máximo 30), durante N segundos después de rotar un token, reusarlo desde el mismo cliente que hizo la rotación (misma IP y mismo User-Agent) devuelve el mismo par nuevo (mismo access y mismo refresh token) sin revocar nada, siempre que el refresh token nuevo siga vigente. Desde otro cliente se trata como robo aunque esté dentro de la ventana: revoca toda la sesión y registra el evento de seguridad, así que quien copie un token recién rotado no obtiene el par. El costo es que un cliente legítimo que cambia de red justo durante el reintento (de Wi-Fi a datos, por ejemplo) pierde la sesión y vuelve a iniciarla. Si el refresh token nuevo ya no está vigente (por ejemplo, tras un logout), responde 401 sin revocar la sesión. Pasados los N segundos, el reuso vuelve a revocar toda la sesión. El par se guarda cifrado con Data Protection en `IDistributedCache` durante esos segundos: con varias instancias, ambos deben ser compartidos (Redis o SQL Server para el caché, y un anillo de claves común), o el reintento que caiga en otra instancia recibe 401. Unos 10 a 30 segundos bastan para los reintentos.
+
+> **Refresh token en cookie HttpOnly.** Por defecto (`RefreshTokenSettings:Delivery: Body`) el refresh token viaja en el cuerpo JSON de login, verificación 2FA, refresh, canje del código de login externo y callback de Google en modo JSON. Con `Cookie`, viaja solo en una cookie `HttpOnly`, `Secure`, `SameSite=Strict`, y el cuerpo trae `refreshToken: null`: el JavaScript de la SPA nunca lo ve ni lo guarda en storage. Con `Both`, viaja en los dos (una SPA y una app móvil contra la misma API, o mientras migras). Con la cookie en uso, `POST /auth/refresh` y `POST /auth/logout` la leen cuando el cuerpo no trae el token (el refresh acepta un cuerpo vacío), el logout la borra, y un refresh rechazado también. Cuando el refresh toma el token de la cookie, la petición debe traer el encabezado `X-Requested-With` (con cualquier valor, por ejemplo `XMLHttpRequest`); sin él responde 400 sin rotar ni borrar la cookie. Un encabezado propio obliga al navegador a hacer el preflight de CORS, así que una página de otro sitio no puede forzar la rotación aunque la cookie viaje con `SameSite: None`. `RefreshTokenSettings:Cookie` ajusta la cookie: `Name` (default `adiam_refresh_token`), `Path` (default `/auth`, relativa al `PathBase` de la app: el navegador solo la manda a las rutas de autenticación), `Domain` (default solo el host de la API) y `SameSite` (default `Strict`). La cookie es `Secure` siempre, así que la API se sirve por HTTPS. La SPA debe llamar a la API con credenciales (`fetch(..., { credentials: "include", headers: { "X-Requested-With": "XMLHttpRequest" } })`); si la API vive en otro origen, declara ese origen en `Cors:AllowedOrigins`: con la cookie en uso, la política de CORS de la librería ya permite credenciales. `SameSite: None` solo hace falta si la SPA vive en otro sitio, no solo en otro subdominio del mismo dominio.
+
+> **Valores validados al arranque.** Estas secciones tienen default, pero un valor fuera de rango detiene el arranque en vez de dejar la protección rota sin aviso: `JwtSettings:Key` de al menos 32 bytes (se mide en UTF-8, así que un carácter acentuado cuenta doble) y `JwtSettings:ExpiryMinutes` entre 1 y 1440; `RefreshTokenSettings:TokenLength` de al menos 32, `ExpiryDays` de al menos 1, `ReuseGracePeriodSeconds` entre 0 y 30, `Cookie:Name` no vacío y `Cookie:Path` empezando con `/`; `Lockout:MaxFailedAttempts` y `Lockout:LockoutMinutes` de al menos 1; `TwoFactor:CodeLength` entre 6 y 9, y `CodeExpiryMinutes`/`ChallengeTokenExpiryMinutes` de al menos 1.
 
 > **Varias instancias de la API.** El logout invalida el access token vigente guardando su `jti` en el `IDistributedCache` de la app. La librería registra la versión en memoria, que con una sola instancia basta. Con varias instancias detrás de un balanceador, registra en tu `Program.cs` un caché distribuido compartido (por ejemplo `builder.Services.AddStackExchangeRedisCache(...)` o `AddDistributedSqlServerCache(...)`, en cualquier orden respecto a `AddAutoDiscoveryIAM()`): si no, un token cerrado en una instancia sigue sirviendo en las otras hasta que expira. Lo mismo aplica al anillo de claves de Data Protection (ver [Instalación → Claves de Data Protection](#instalación-1)) y, como dice la nota de `RateLimiting`, a los contadores de límites.
 
@@ -1421,7 +1537,7 @@ No hace falta declarar ninguna sección de esta tabla en tu propio `appsettings.
 >
 > Ni el código de un solo uso ni el error viajan nunca en query string ni en el cuerpo de una respuesta cacheable, para que no queden en logs de servidor ni en el header `Referer`.
 
-> **Login con Google y cuentas existentes.** Si el usuario tiene 2FA activo, el login con Google no emite tokens: responde igual que `POST /auth/login`, con `requiresTwoFactor: true` y un `twoFactorChallengeToken` que se completa con `POST /auth/2fa/verify` (con `ExternalLoginRedirectUri`, esa respuesta es la que entrega el canje del código). Una cuenta bloqueada por intentos fallidos tampoco entra por Google mientras dure el bloqueo. La primera vez que alguien entra con Google, su identidad se vincula a la cuenta que ya tenga ese email, salvo que esa cuenta tenga `IsAdmin`, `IsDevelopment` o `IsSuAdmin`: esas responden 409 y vinculan Google solo con la sesión iniciada (`POST /auth/google/link`), porque quien controle una cuenta de Google con ese correo (por ejemplo, el administrador del dominio en Google Workspace) obtendría sus privilegios. Si la cuenta existente nunca verificó su email, al vincularla se invalida su contraseña (el dueño define una nueva con el restablecimiento) y los tokens ya emitidos: cualquiera pudo registrarla con ese correo y una contraseña propia, esperando a que el dueño entrara con Google.
+> **Login con Google y cuentas existentes.** Si el usuario tiene 2FA activo, el login con Google no emite tokens: responde igual que `POST /auth/login`, con `requiresTwoFactor: true` y un `twoFactorChallengeToken` que se completa con `POST /auth/2fa/verify` (con `ExternalLoginRedirectUri`, esa respuesta es la que entrega el canje del código). Una cuenta bloqueada por intentos fallidos tampoco entra por Google mientras dure el bloqueo. La primera vez que alguien entra con Google, su identidad se vincula a la cuenta que ya tenga ese email, salvo que esa cuenta tenga `IsAdmin`, `IsDevelopment` o `IsSuAdmin`: esas responden 409 y vinculan Google solo con la sesión iniciada (`POST /auth/google/link`), porque quien controle una cuenta de Google con ese correo (por ejemplo, el administrador del dominio en Google Workspace) obtendría sus privilegios. Si la cuenta existente nunca verificó su email, al vincularla se invalida su contraseña (el dueño define una nueva con el restablecimiento) y los tokens ya emitidos: cualquiera pudo registrarla con ese correo y una contraseña propia, esperando a que el dueño entrara con Google. Aprobar una cuenta (`Registration:RequireAdminApproval`) o crearla con contraseña desde `POST /users/by-admin` no cuenta como verificar su email: el administrador no tiene forma de probar de quién es el correo, así que esa defensa sigue aplicando hasta que el usuario lo confirme.
 
 > **Secretos y tokens en la base de datos.** Los tokens de activación y de restablecimiento de contraseña se guardan solo como hash (SHA-256): quien lea la base de datos no puede usar ningún enlace pendiente. Por eso cada reenvío de activación genera un enlace nuevo y el anterior deja de servir. El secreto de Authenticator (TOTP) se guarda cifrado con ASP.NET Core Data Protection, y un código ya aceptado no se acepta de nuevo, aunque siga dentro de su ventana de 30 segundos. El token de reto del segundo factor (`twoFactorChallengeToken`) también queda solo como hash: el código de 6 dígitos no basta para completar un login sin él. El anillo de claves de Data Protection tiene que persistir entre reinicios y ser el mismo en todas las instancias: ver [Instalación → Claves de Data Protection](#instalación-1).
 
@@ -1446,7 +1562,14 @@ Esta es la plantilla real usada por el `SampleHost` de este mismo repo, con toda
   },
   "RefreshTokenSettings": {
     "ExpiryDays": 7,
-    "TokenLength": 32
+    "TokenLength": 32,
+    "ReuseGracePeriodSeconds": 0,
+    "Delivery": "Body",
+    "Cookie": {
+      "Name": "adiam_refresh_token",
+      "Path": "/auth",
+      "SameSite": "Strict"
+    }
   },
   "Authentication": {
     "ExternalLoginRedirectUri": "{{EXTERNAL_LOGIN_REDIRECT_URI = https://tu-app-frontend.com/auth/callback (opcional, distinto de Google.RedirectUri)}}",
@@ -1479,6 +1602,12 @@ Esta es la plantilla real usada por el `SampleHost` de este mismo repo, con toda
     "ActivationResendCooldownSeconds": 60,
     "ActivationResendMaxPerHour": 5
   },
+  "Registration": {
+    "EmailPasswordEnabled": true,
+    "ExternalProviders": { "Google": true },
+    "RequireAdminApproval": false,
+    "PasswordSetupLinkExpiryHours": 72
+  },
   "PasswordReset": { "TokenLength": 64, "TokenExpiryMinutes": 30 },
   "Lockout": { "MaxFailedAttempts": 5, "LockoutMinutes": 60 },
   "TwoFactor": {
@@ -1499,6 +1628,6 @@ Esta es la plantilla real usada por el `SampleHost` de este mismo repo, con toda
 }
 ```
 
-`RefreshTokenSettings`, `Activation`, `PasswordReset`, `Lockout`, `TwoFactor` y `PasswordStruct` ya traen su default seguro embebido en código (ver [Configuración recomendada](https://autodiscoveryiam.frugocorp.com/references/configuration-testing/configuration#configuracion-recomendada) arriba) — se incluyen aquí completos solo como referencia de cómo se ven si decides sobreescribirlos, no porque sea obligatorio declararlos.
+`RefreshTokenSettings`, `Activation`, `Registration`, `PasswordReset`, `Lockout`, `TwoFactor` y `PasswordStruct` ya traen su default seguro embebido en código (ver [Configuración recomendada](https://autodiscoveryiam.frugocorp.com/references/configuration-testing/configuration#configuracion-recomendada) arriba) — se incluyen aquí completos solo como referencia de cómo se ven si decides sobreescribirlos, no porque sea obligatorio declararlos.
 
 ---

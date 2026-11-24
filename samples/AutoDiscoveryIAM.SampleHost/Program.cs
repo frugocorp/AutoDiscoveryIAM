@@ -126,6 +126,20 @@ await app.InitializeDatabaseAsync();
 // Idempotente, seguro de correr en cada arranque.
 await app.SeedAutoDiscoveryIAMDefaultDataAsync(includeDevelopmentUsers: true, CancellationToken.None);
 
+// Bandera de arranque "--sync-permissions": sincroniza los permisos con los endpoints mapeados (los de
+// la librería y los de este proyecto) y termina sin levantar el servidor, para un pipeline de
+// despliegue (dotnet AutoDiscoveryIAM.SampleHost.dll --sync-permissions). Va después de mapear todos
+// los endpoints; si el sync falla (por ejemplo, una clave duplicada), lanza una excepción y el
+// proceso termina con error.
+if (args.Contains("--sync-permissions", StringComparer.Ordinal))
+{
+  var sync = await app.SyncAutoDiscoveryIAMPermissionsAsync(cancellationToken: CancellationToken.None);
+  Console.WriteLine(string.Create(
+    System.Globalization.CultureInfo.InvariantCulture,
+    $"Permisos sincronizados: {sync.OrchestrationResult.PermissionsCreated} nuevos, {sync.OrchestrationResult.PermissionsUpdated} actualizados, {sync.OrchestrationResult.PermissionsObsoleted} obsoletos."));
+  return;
+}
+
 // *******************************************
 // 6. Ejecutar la Aplicación
 // *******************************************

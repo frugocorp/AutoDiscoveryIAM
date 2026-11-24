@@ -23,8 +23,8 @@ Todo endpoint queda protegido por RBAC estándar salvo que se marque explícitam
 
 El package siembra dos roles al arrancar, siempre:
 
-- **`AdminAutoDiscoveryIAM`** — administra la app desde el primer día, sin ningún flag especial: consulta usuarios, roles y permisos; crea, edita y restaura roles; les asigna y quita permisos; asigna roles a usuarios, y aprueba o rechaza registros. Puede darse a sí mismo o a otros roles cualquier permiso, incluidos los de tus propios endpoints después de sincronizar. No puede cambiar `IsAdmin`/`IsDevelopment`/`IsSuAdmin` ni correr el sync: eso sigue detrás de los flags.
-- **`UserDefault`** — nace sin ningún permiso. Pensado para asignarse automáticamente a usuarios auto-registrados; el equipo dev le agrega los permisos que su app necesite. Puede eliminarse o renombrarse — si se reemplaza, basta con marcar `IsDefaultForNewUser=true` en el rol sustituto directamente en la base de datos.
+- **`AdminAutoDiscoveryIAM`** — administra la app desde el primer día, sin ningún flag especial: consulta usuarios, roles y permisos; da de alta usuarios (`POST /users/by-admin`); crea, edita y restaura roles; les asigna y quita permisos; asigna roles a usuarios, y aprueba o rechaza registros. Puede darse a sí mismo o a otros roles cualquier permiso, incluidos los de tus propios endpoints después de sincronizar. No puede cambiar `IsAdmin`/`IsDevelopment`/`IsSuAdmin` ni correr el sync: eso sigue detrás de los flags.
+- **`UserDefault`** — nace sin ningún permiso. Se asigna automáticamente a todo usuario nuevo, sin importar el camino que lo crea: registro por correo (`POST /users`), alta con un proveedor externo (Google) o alta hecha por un administrador (`POST /users/by-admin`). El equipo dev le agrega los permisos que su app necesite. Puede eliminarse o renombrarse — si se reemplaza, basta con marcar `IsDefaultForNewUser=true` en el rol sustituto directamente en la base de datos. Si ningún rol activo tiene la marca, el usuario nuevo nace sin roles.
 
 La API rechaza asignar, vía `RolePermission`, un permiso `[RequiresDevelopmentAccess]`/`[RequiresSuAdminAccess]` a un rol que ya tiene `IsDefaultForNewUser=true`. **Esto no cubre el camino inverso**: como `IsDefaultForNewUser` solo se marca por acceso directo a la base de datos (sin endpoint, ver arriba), nada en la aplicación puede impedir que alguien marque como default un rol que _ya_ tenía esos permisos asignados desde antes. Es el mismo nivel de confianza que ya se le da a quien administra la base de datos para el resto de asignaciones sensibles — no es un hueco explotable por un usuario, solo una operación manual que hay que hacer con cuidado.
 
@@ -103,7 +103,87 @@ curl -X POST https://tu-api/permissions/sync \
 - Renombrar un slice cambia su clave: el permiso anterior se marca como obsoleto (nunca se borra) y se crea uno nuevo, que hay que volver a asignar.
 - Con `"dryRun": true` ves qué cambiaría sin escribir nada.
 
+### Sincroniza desde código, sin login HTTP
+
+En un pipeline de despliegue no hace falta un usuario `IsDevelopment` ni levantar el servidor. `app.SyncAutoDiscoveryIAMPermissionsAsync()` hace la misma sincronización desde `Program.cs`. Va **después** de `app.MapAutoDiscoveryIAMEndpoints()` y de mapear tus propios endpoints: el sync lee la tabla de rutas, y lo que todavía no está mapeado no existe para él. Un patrón común es una bandera de arranque que sincroniza y termina:
+
+````code-block
+```csharp
+app.MapAutoDiscoveryIAMEndpoints();
+app.MapPedidosEndpoints(); // tus endpoints
+
+await app.SeedAutoDiscoveryIAMDefaultDataAsync();
+
+if (args.Contains("--sync-permissions", StringComparer.Ordinal))
+{
+  var sync = await app.SyncAutoDiscoveryIAMPermissionsAsync();
+  Console.WriteLine($"{sync.OrchestrationResult.PermissionsCreated} permisos nuevos");
+  return;
+}
+
+app.Run();
+```
+````
+
+- En el despliegue: `dotnet MiApi.dll --sync-permissions` después de aplicar las migraciones, y luego arranca la app normal.
+- Acepta las mismas opciones que el endpoint: `app.SyncAutoDiscoveryIAMPermissionsAsync(new SyncPermissionsRequestDto(DryRun: true))`.
+- Devuelve el mismo resultado que el endpoint (permisos nuevos, actualizados, obsoletos y `EndpointsWithoutPermission`).
+- Si se llama antes de mapear los endpoints, o si el sync falla (por ejemplo, una clave duplicada), lanza `InvalidOperationException`: el proceso termina con error y el pipeline se detiene.
+- No resuelvas `SyncPermissionsHandler` a mano antes de `app.Run()`: hasta que la app arranca, ASP.NET Core no conecta las rutas mapeadas a su `EndpointDataSource`, y el sync no encontraría ningún endpoint. La extensión lee las rutas directo de la app.
+- El SampleHost del repositorio trae la bandera `--sync-permissions` como ejemplo.
+- No agrega ninguna ruta HTTP: solo lo corre quien ejecuta el proceso de la app, y la bandera sale de sus argumentos de línea de comandos, nunca de una petición. Por HTTP, el único camino sigue siendo `POST /permissions/sync`, que exige `IsDevelopment`. Tampoco otorga permisos: solo crea, actualiza y marca obsoletos.
+
 ### Qué reporta y qué rechaza el sync
 
 - **`endpointsWithoutPermission`** en la respuesta lista los endpoints que exigen un permiso pero cuyo namespace no sigue la convención. Muévelos bajo `Features`, o márcalos con `[PermissionsNotRequired]`, `[RequiresDevelopmentAccess]` o `[RequiresSuAdminAccess]` si no deben depender de un rol.
 - **Una clave duplicada hace fallar el sync con un 400** que nombra los dos namespaces. Pasa cuando dos slices distintos producen la misma clave, por ejemplo tu `MiApi.Features.Users.Commands.CreateUser` contra el `users.create_user` de la propia librería. Renombra tu feature o tu acción: si no, quien tuviera uno de los dos permisos entraría también al otro sin que nadie lo decida.
+
+## Verificación step-up con el Authenticator
+
+Para una acción sensible de tu app (firmar, borrar algo importante, cambiar datos de pago), puedes pedirle al usuario que ya inició sesión un código de su app autenticadora. `ITwoFactorStepUpService` lo verifica con las mismas protecciones que el segundo factor del login:
+
+- Un código ya usado, o uno anterior, no vuelve a servir: el paso de tiempo aceptado queda guardado en la base.
+- Cada código incorrecto cuenta para el bloqueo de la cuenta, con el mismo contador y los mismos `Lockout:MaxFailedAttempts`/`LockoutMinutes` del login. Al llegar al máximo, la cuenta queda bloqueada también para iniciar sesión.
+- Quien tenga una sesión robada puede fallar códigos a propósito para bloquear al dueño: es la misma exposición que ya tiene el login con contraseña. El bloqueo no cierra las sesiones abiertas y vence solo al terminar `LockoutMinutes`; el dueño lo quita antes restableciendo su contraseña (ver «Si alguien roba una sesión», más abajo).
+
+La librería no expone un endpoint para esto: la verificación solo vale dentro del endpoint que hace la acción. Inyecta el servicio en el tuyo:
+
+````code-block
+```csharp
+app.MapPost("/pedidos/{id}/cancelar", async (
+  Guid id,
+  CancelarPedidoRequest request,
+  ITwoFactorStepUpService stepUp,
+  HttpContext context,
+  CancellationToken cancellationToken) =>
+{
+  var result = await stepUp.VerifyCurrentUserAsync(
+    request.Codigo,
+    context.Connection.RemoteIpAddress?.ToString(),
+    cancellationToken);
+
+  return result.Status switch
+  {
+    TwoFactorStepUpStatus.Verified => Results.Ok(/* cancela el pedido */),
+    TwoFactorStepUpStatus.LockedOut => Results.StatusCode(StatusCodes.Status423Locked),
+    TwoFactorStepUpStatus.NotEnrolled => Results.Problem("Activa el Authenticator para esta operación.", statusCode: StatusCodes.Status403Forbidden),
+    _ => Results.Unauthorized(),
+  };
+});
+```
+````
+
+- `VerifyCurrentUserAsync` usa el usuario del JWT de la petición; `VerifyAsync(userPublicId, ...)` recibe el `PublicId` explícito.
+- Resultados: `Verified`, `InvalidCode` (incorrecto, vencido o ya usado), `LockedOut` (con `LockoutEnd`), `NotEnrolled` (el usuario no tiene el Authenticator activo) y `UserNotFound` (sin sesión, o usuario inexistente o inactivo).
+- Solo aplica al método Authenticator. El enrolamiento sigue siendo `POST /users/me/2fa/authenticator/enroll`, que devuelve el secreto en Base32 y la URI `otpauth://` con el `TwoFactor:Issuer` de tu configuración. La librería nunca genera la imagen del QR: tu cliente la dibuja con la librería que elijas.
+- Agrega una regla de `RateLimiting` para tu endpoint (por ejemplo `post:/pedidos/*/cancelar`, 10 por minuto), igual que las rutas de 2FA de la librería.
+
+## Si alguien roba una sesión
+
+El camino del dueño es "olvidé mi contraseña" (`POST /users/password/reset/request` y `POST /users/password/reset/confirm`). Al confirmar la contraseña nueva:
+
+- Se revocan todos los refresh tokens del usuario: ninguna sesión abierta puede renovarse.
+- Los access tokens ya emitidos dejan de valer en la siguiente petición (`TokenValidFrom`), sin esperar a que expiren.
+- Se quita el bloqueo por intentos fallidos y el correo queda confirmado.
+
+El reenvío de activación por un administrador (`POST /users/{publicId}/activation/resend`) no es el camino para una cuenta robada: solo aplica a cuentas inactivas, y una cuenta robada sigue activa. Tampoco puede quien robó la sesión cambiar el correo de la cuenta a escondidas: el cambio de correo pasa por la revisión de un administrador y lo ejecuta un `IsSuAdmin`.

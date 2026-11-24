@@ -6,6 +6,7 @@
 
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshToken;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.TwoFactor.VerifyTwoFactor.Docs;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 
@@ -36,6 +37,7 @@ public static class VerifyTwoFactorEndpoint
     VerifyTwoFactorRequestDto requestDto,
     VerifyTwoFactorHandler handler,
     VerifyTwoFactorCommandValidator validator,
+    IRefreshTokenDelivery refreshTokenDelivery,
     HttpContext context,
     CancellationToken cancellationToken)
   {
@@ -53,7 +55,8 @@ public static class VerifyTwoFactorEndpoint
 
     if (result.Success)
     {
-      var response = new VerifyTwoFactorResponse(true, result.Data);
+      var data = result.Data! with { RefreshToken = refreshTokenDelivery.Deliver(context, result.Data!.RefreshToken) };
+      var response = new VerifyTwoFactorResponse(true, data);
       return Results.Ok(response);
     }
 

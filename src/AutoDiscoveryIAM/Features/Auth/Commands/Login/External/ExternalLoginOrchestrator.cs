@@ -12,8 +12,10 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.TwoFactor;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Infrastructure.Logging;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Models.Entities;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Activation;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Configuration;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Catalogs;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Entities;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.DefaultRole;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -29,7 +31,9 @@ public class ExternalLoginOrchestrator(
     IActivationEmailService activationEmailService,
     ITwoFactorCodeGenerator twoFactorCodeGenerator,
     ITwoFactorEmailService twoFactorEmailService,
-    IOptions<TwoFactorSettings> twoFactorSettings)
+    IOptions<TwoFactorSettings> twoFactorSettings,
+    IDefaultRoleAssignmentService defaultRoleAssignmentService,
+    IOptions<RegistrationSettings> registrationSettings)
 {
     private readonly ExternalLoginProviderResolver _providerResolver = providerResolver;
     private readonly ExternalLoginSessionService _sessionService = sessionService;
@@ -41,6 +45,8 @@ public class ExternalLoginOrchestrator(
     private readonly ITwoFactorCodeGenerator _twoFactorCodeGenerator = twoFactorCodeGenerator;
     private readonly ITwoFactorEmailService _twoFactorEmailService = twoFactorEmailService;
     private readonly TwoFactorSettings _twoFactorSettings = twoFactorSettings.Value;
+    private readonly IDefaultRoleAssignmentService _defaultRoleAssignmentService = defaultRoleAssignmentService;
+    private readonly RegistrationSettings _registrationSettings = registrationSettings.Value;
 
     public async Task<OperationResult<LoginResponseDto>> HandleCallbackAsync(
       string providerName,
@@ -196,6 +202,12 @@ public class ExternalLoginOrchestrator(
         }
 
         var (user, wasCreated) = await ResolveOrCreateUserAsync(externalIdentity, cancellationToken);
+        if (user == null)
+        {
+            return OperationResult.Fail<User>(
+              ErrorInfo.RegistrationDisabled,
+              "No existe una cuenta con este correo y el registro con este proveedor está deshabilitado.");
+        }
 
         // Vincular por coincidencia de email le daría la cuenta a quien controle una cuenta de Google
         // con ese correo (por ejemplo, el administrador de su dominio de Google Workspace). En cuentas
@@ -343,7 +355,12 @@ public class ExternalLoginOrchestrator(
             cancellationToken);
     }
 
-    private async Task<(User User, bool WasCreated)> ResolveOrCreateUserAsync(ExternalIdentityProfile profile, CancellationToken cancellationToken)
+    /// <summary>
+    /// Busca la cuenta por correo o, si no existe y el proveedor puede registrar
+    /// (<see cref="RegistrationSettings.ExternalProviders"/>), la crea. Devuelve <c>null</c> cuando no
+    /// existe y el registro con ese proveedor está apagado.
+    /// </summary>
+    private async Task<(User? User, bool WasCreated)> ResolveOrCreateUserAsync(ExternalIdentityProfile profile, CancellationToken cancellationToken)
     {
         var existingUser = await _dbContext.Users
           .FirstOrDefaultAsync(u => !u.IsDeleted && u.Email == profile.Email, cancellationToken);
@@ -353,6 +370,12 @@ public class ExternalLoginOrchestrator(
             return (existingUser, false);
         }
 
+        if (!_registrationSettings.IsExternalProviderEnabled(profile.Provider))
+        {
+            _logger.LogLoginFailed(profile.Email);
+            return (null, false);
+        }
+
         var username = await BuildUniqueUsernameAsync(profile.Email, cancellationToken);
 
         var user = new User
@@ -360,12 +383,13 @@ public class ExternalLoginOrchestrator(
             Username = username,
             Email = profile.Email,
             PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N")),
-            Status = UserStatusCatalog.Pending,
+            Status = _registrationSettings.SelfRegistrationStatus,
             IsActive = false,
             IsEmailVerified = false,
         };
 
         _dbContext.Users.Add(user);
+        await _defaultRoleAssignmentService.AssignDefaultRoleAsync(user, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return (user, true);
     }

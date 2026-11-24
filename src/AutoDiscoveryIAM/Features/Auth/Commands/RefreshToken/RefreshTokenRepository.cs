@@ -18,6 +18,8 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshTo
 public interface IRefreshTokenRepository
 {
   Task<RefreshTokenEntity?> GetByTokenAsync(string token, CancellationToken cancellationToken = default);
+  Task<RefreshTokenEntity?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+  Task ReloadAsync(RefreshTokenEntity refreshToken, CancellationToken cancellationToken = default);
   Task<RefreshTokenEntity> CreateAsync(RefreshTokenEntity refreshToken, CancellationToken cancellationToken = default);
   Task UpdateAsync(RefreshTokenEntity refreshToken, CancellationToken cancellationToken = default);
   Task RevokeUserTokensAsync(long userId, string reason, CancellationToken cancellationToken = default);
@@ -41,6 +43,26 @@ public class RefreshTokenRepository(AutoDiscoveryIAMDbContext dbContext) : IRefr
     return await _dbContext.RefreshTokens
       .Include(rt => rt.User)
       .FirstOrDefaultAsync(rt => rt.Token == hash, cancellationToken);
+  }
+
+  /// <summary>
+  /// Obtiene un refresh token por el hash ya calculado (el que guardan las columnas Token y
+  /// ReplacedByToken).
+  /// </summary>
+  public Task<RefreshTokenEntity?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+  {
+    return _dbContext.RefreshTokens
+      .AsNoTracking()
+      .FirstOrDefaultAsync(rt => rt.Token == tokenHash, cancellationToken);
+  }
+
+  /// <summary>
+  /// Descarta los cambios en memoria del token y vuelve a leerlo de la base (tras perder una carrera
+  /// de concurrencia).
+  /// </summary>
+  public Task ReloadAsync(RefreshTokenEntity refreshToken, CancellationToken cancellationToken = default)
+  {
+    return _dbContext.Entry(refreshToken).ReloadAsync(cancellationToken);
   }
 
   /// <summary>

@@ -53,6 +53,7 @@ public sealed class PasswordManagementService(
     }
 
     user.PasswordHash = _passwordHasher.HashPassword(newPassword);
+    user.MustChangePassword = false;
     // Invalida de inmediato cualquier access token ya emitido (en cualquier dispositivo), no solo
     // los refresh tokens: cualquier JWT con un tvf anterior a este valor deja de ser válido.
     user.TokenValidFrom = TimeHelpers.GetCurrentMexicoTime();
@@ -125,6 +126,10 @@ public sealed class PasswordManagementService(
     }
 
     user.PasswordHash = _passwordHasher.HashPassword(newPassword);
+    user.MustChangePassword = false;
+    // El enlace llegó al correo del usuario: definir la contraseña con él prueba que el correo es suyo
+    // (así se confirma también el de una cuenta creada por invitación de un administrador).
+    user.IsEmailVerified = true;
     user.PasswordResetToken = null;
     user.PasswordResetTokenExpiration = null;
     user.FailedLoginAttempts = 0;

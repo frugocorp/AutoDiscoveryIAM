@@ -68,6 +68,8 @@ public class ErrorInfo(int status, int statusCode, string key, string descriptio
   public static ErrorInfo AccountLockedOut { get; } = new(StatusCodes.Status401Unauthorized, StatusCodes.Status401Unauthorized, "AUTH_ACCOUNT_LOCKED_OUT", "La cuenta esta bloqueada temporalmente por multiples intentos fallidos");
   public static ErrorInfo InsufficientPermissions { get; } = new(StatusCodes.Status403Forbidden, StatusCodes.Status403Forbidden, "AUTH_INSUFFICIENT_PERMISSIONS", "Permisos insuficientes para acceder a este recurso");
   public static ErrorInfo DevelopmentAccessRequired { get; } = new(StatusCodes.Status403Forbidden, StatusCodes.Status403Forbidden, "AUTH_DEVELOPMENT_ACCESS_REQUIRED", "Se requiere acceso de desarrollo para este recurso");
+  public static ErrorInfo PasswordChangeRequired { get; } = new(StatusCodes.Status403Forbidden, StatusCodes.Status403Forbidden, "AUTH_PASSWORD_CHANGE_REQUIRED", "Debes cambiar tu contraseña antes de usar este recurso");
+  public static ErrorInfo RegistrationDisabled { get; } = new(StatusCodes.Status403Forbidden, StatusCodes.Status403Forbidden, "REGISTRATION_DISABLED", "Esta forma de registro está deshabilitada en la configuración");
   public static ErrorInfo SuperAdminAccessRequired { get; } = new(StatusCodes.Status403Forbidden, StatusCodes.Status403Forbidden, "AUTH_SUPER_ADMIN_REQUIRED", "Se requiere acceso de SuperAdmin para este recurso");
 
 }

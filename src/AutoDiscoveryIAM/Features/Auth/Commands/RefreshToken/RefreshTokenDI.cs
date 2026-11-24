@@ -25,6 +25,8 @@ public static class RefreshTokenDI
     // Servicios
     services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
     services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+    services.AddScoped<IRefreshTokenGraceStore, RefreshTokenGraceStore>();
+    services.AddScoped<IRefreshTokenDelivery, RefreshTokenDelivery>();
 
     // Handler y Validador
     services.AddScoped<RefreshTokenHandler>();

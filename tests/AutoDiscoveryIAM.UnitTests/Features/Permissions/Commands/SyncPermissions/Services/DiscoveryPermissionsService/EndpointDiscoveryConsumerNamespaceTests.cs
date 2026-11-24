@@ -39,6 +39,18 @@ public class EndpointDiscoveryConsumerNamespaceTests
     result.Single().SourceNamespace.Should().Be("MiApi.Features.Pedidos.Commands.CrearPedido");
   }
 
+  [Fact(DisplayName = "Una descripción de endpoint más larga que la columna se recorta para que el sync no falle al guardar")]
+  public async Task DiscoverEndpointsFromMetadataAsync_WithLongDescription_TruncatesToColumnLength()
+  {
+    var longDescription = new string('d', 800);
+    var sut = CreateSut(Endpoint("/pedidos", "POST", typeof(MiApi.Features.Pedidos.Commands.CrearPedido.CrearPedidoEndpoint), metadata: new Microsoft.AspNetCore.Http.EndpointDescriptionAttribute(longDescription)));
+
+    var result = await sut.DiscoverEndpointsFromMetadataAsync(CancellationToken.None);
+
+    result.Single().Description!.Length.Should().Be(500);
+    result.Single().Description!.EndsWith('…').Should().BeTrue();
+  }
+
   /// <summary>
   /// Varias rutas del mismo slice (mismo namespace) siguen siendo un solo permiso, como
   /// <c>TwoFactor</c> o <c>PasswordManagement</c> en la librería.

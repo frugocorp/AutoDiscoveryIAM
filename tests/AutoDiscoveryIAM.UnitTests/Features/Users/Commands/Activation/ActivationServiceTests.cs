@@ -124,6 +124,72 @@ public class ActivationServiceTests
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
+    [Fact(DisplayName = "Con aprobación obligatoria, confirmar el correo lo verifica pero no activa la cuenta")]
+    public async Task ConfirmByTokenAsync_WhenPendingApproval_VerifiesEmailWithoutActivating()
+    {
+        var (service, repository, _, emailService, unitOfWork) = CreateSut();
+        var user = new User
+        {
+            Email = "aprobacion@example.com",
+            Status = UserStatusCatalog.PendingApproval,
+            EmailVerificationToken = OneTimeTokenHasher.Hash("abc"),
+            EmailVerificationTokenExpiration = TimeHelpers.GetCurrentMexicoTime().AddMinutes(10),
+        };
+        repository.GetByTokenHashAsync(OneTimeTokenHasher.Hash("abc"), Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await service.ConfirmByTokenAsync("abc", CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Data!.IsActivated.Should().BeFalse();
+        user.IsEmailVerified.Should().BeTrue();
+        user.IsActive.Should().BeFalse();
+        user.Status.Should().Be(UserStatusCatalog.PendingApproval);
+        user.EmailVerificationToken.Should().BeNull();
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await emailService.DidNotReceive().SendAccountActivatedEmailAsync(Arg.Any<User>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+    }
+
+    [Trait("Category", "Security")]
+    [Theory(DisplayName = "Una cuenta rechazada o desactivada no se reactiva con un token de activación")]
+    [InlineData(UserStatusCatalog.Inactive)]
+    [InlineData(UserStatusCatalog.Blocked)]
+    [InlineData(UserStatusCatalog.Suspended)]
+    public async Task ConfirmByTokenAsync_WhenUserNotAwaitingActivation_ReturnsConflict(string status)
+    {
+        var (service, repository, _, _, unitOfWork) = CreateSut();
+        var user = new User
+        {
+            Email = "rechazado@example.com",
+            Status = status,
+            EmailVerificationToken = OneTimeTokenHasher.Hash("abc"),
+            EmailVerificationTokenExpiration = TimeHelpers.GetCurrentMexicoTime().AddMinutes(10),
+        };
+        repository.GetByTokenHashAsync(OneTimeTokenHasher.Hash("abc"), Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await service.ConfirmByTokenAsync("abc", CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.ErrorInfo.Should().Be(ErrorInfo.Status409Conflict);
+        user.IsActive.Should().BeFalse();
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Trait("Category", "Security")]
+    [Theory(DisplayName = "El reenvío público no envía enlace a una cuenta rechazada ni a una que ya confirmó su correo")]
+    [InlineData(UserStatusCatalog.Inactive, false)]
+    [InlineData(UserStatusCatalog.PendingApproval, true)]
+    public async Task ResendPublicAsync_WhenUserNotAwaitingEmailConfirmation_DoesNotSendEmail(string status, bool isEmailVerified)
+    {
+        var (service, repository, _, emailService, _) = CreateSut();
+        var user = new User { Email = "noreenvio@example.com", Status = status, IsEmailVerified = isEmailVerified };
+        repository.GetByEmailAsync(user.Email, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await service.ResendPublicAsync(user.Email, CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        await emailService.DidNotReceive().SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+    }
+
     // ───────────────────────────────────────────────────────────────────────
     // ResendPublicAsync
     // ───────────────────────────────────────────────────────────────────────
@@ -270,18 +336,20 @@ public class ActivationServiceTests
         result.ErrorInfo.Should().Be(ErrorInfo.Status404NotFound);
     }
 
-    [Fact]
-    public async Task ApproveByPublicIdAsync_WhenUserFound_ActivatesUser()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveByPublicIdAsync_WhenUserFound_ActivatesUserWithoutVerifyingEmail(bool isEmailVerified)
     {
         var (service, repository, _, _, unitOfWork) = CreateSut();
-        var user = new User { Email = "pending@example.com", PublicId = Guid.NewGuid() };
+        var user = new User { Email = "pending@example.com", PublicId = Guid.NewGuid(), IsEmailVerified = isEmailVerified };
         repository.GetByPublicIdAsync(user.PublicId, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await service.ApproveByPublicIdAsync(user.PublicId, CancellationToken.None);
 
         result.Success.Should().BeTrue();
         user.IsActive.Should().BeTrue();
-        user.IsEmailVerified.Should().BeTrue();
+        user.IsEmailVerified.Should().Be(isEmailVerified);
         user.Status.Should().Be(UserStatusCatalog.Active);
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }

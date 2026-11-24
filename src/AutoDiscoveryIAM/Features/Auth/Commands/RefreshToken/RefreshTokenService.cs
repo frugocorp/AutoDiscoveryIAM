@@ -29,6 +29,32 @@ public class RefreshTokenSettings
   /// Longitud del token en bytes. Default: 32 bytes (256 bits).
   /// </summary>
   public int TokenLength { get; set; } = 32;
+
+  /// <summary>
+  /// Máximo permitido para <see cref="ReuseGracePeriodSeconds"/>.
+  /// </summary>
+  public const int MaxReuseGracePeriodSeconds = 30;
+
+  /// <summary>
+  /// Ventana (segundos) en la que reusar un refresh token recién rotado devuelve el mismo par nuevo en
+  /// vez de tratarse como robo y revocar toda la sesión: cubre el reintento por una respuesta perdida
+  /// y dos refresh simultáneos desde el mismo cliente (misma IP y User-Agent que la rotación; desde otro
+  /// cliente se trata como reuso). Default 0 (apagado). Máximo 30. Con varias instancias requiere un
+  /// <c>IDistributedCache</c> y un anillo de claves de Data Protection compartidos.
+  /// </summary>
+  public int ReuseGracePeriodSeconds { get; set; }
+
+  /// <summary>
+  /// Dónde se entrega el refresh token: <c>Body</c> (default, en el JSON), <c>Cookie</c> (solo en una
+  /// cookie HttpOnly, Secure) o <c>Both</c>. Con cookie, <c>POST /auth/refresh</c> y
+  /// <c>POST /auth/logout</c> la leen si el cuerpo no trae el token.
+  /// </summary>
+  public RefreshTokenDeliveryMode Delivery { get; set; } = RefreshTokenDeliveryMode.Body;
+
+  /// <summary>
+  /// Atributos de la cookie cuando <see cref="Delivery"/> la usa.
+  /// </summary>
+  public RefreshTokenCookieSettings Cookie { get; set; } = new();
 }
 
 /// <summary>

@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.UpdateUserTypeAdmin;
-using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetUsers;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Helpers;
 using Xunit;
 
@@ -45,10 +44,7 @@ public class UpdateUserTypeAdminIntegrationTests(CustomWebApplicationFactory<Pro
     var createResponse = await _client.PostAsJsonAsync("/users", createRequest, CancellationToken.None);
     createResponse.EnsureSuccessStatusCode();
 
-    var usersResponse = await _client.GetAsync("/users?pageSize=100", CancellationToken.None);
-    usersResponse.EnsureSuccessStatusCode();
-    var usersPayload = await usersResponse.Content.ReadFromJsonAsync<GetUsersResponse>(cancellationToken: CancellationToken.None);
-
-    return usersPayload!.Data!.Items.Single(u => u.Username == username).PublicId;
+    // De la base, no de la primera página de /users: otras pruebas dejan usuarios que la llenan.
+    return await TestDataLookup.GetUserPublicIdByUsernameAsync(factory.Services, username);
   }
 }

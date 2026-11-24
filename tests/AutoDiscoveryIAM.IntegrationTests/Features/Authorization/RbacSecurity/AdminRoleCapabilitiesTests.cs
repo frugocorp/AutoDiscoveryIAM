@@ -6,7 +6,6 @@
 
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Helpers;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Features.Authorization.RbacSecurity;
@@ -29,10 +28,10 @@ public class AdminRoleCapabilitiesTests(CustomWebApplicationFactory<Program> fac
   {
     using var suAdmin = factory.CreateClient();
     await suAdmin.AuthenticateUserAsync(UserType.SuAdmin, CancellationToken.None);
-    var rolePublicId = await FindPublicIdAsync(suAdmin, "/roles?pageSize=100", "name", AdminRoleName);
-    var managerPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", Manager.Email!);
-    var regularPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", "user@example.com");
-    var suAdminPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", "su@example.com");
+    var rolePublicId = await TestDataLookup.GetRolePublicIdByNameAsync(factory.Services, AdminRoleName);
+    var managerPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, Manager.Email!);
+    var regularPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, "user@example.com");
+    var suAdminPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, "su@example.com");
 
     var assign = await suAdmin.PutAsync($"/users/{managerPublicId}/roles/{rolePublicId}", content: null, CancellationToken.None);
     assign.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -63,47 +62,5 @@ public class AdminRoleCapabilitiesTests(CustomWebApplicationFactory<Program> fac
     {
       await suAdmin.DeleteAsync($"/users/{managerPublicId}/roles/{rolePublicId}", CancellationToken.None);
     }
-  }
-
-  private static async Task<string> FindPublicIdAsync(HttpClient client, string url, string property, string value)
-  {
-    var json = await client.GetStringAsync(url, CancellationToken.None);
-    using var document = JsonDocument.Parse(json);
-    return FindPublicId(document.RootElement, property, value)
-      ?? throw new InvalidOperationException($"No se encontró {property}={value} en {url}");
-  }
-
-  private static string? FindPublicId(JsonElement element, string property, string value)
-  {
-    if (element.ValueKind == JsonValueKind.Object)
-    {
-      if (element.TryGetProperty(property, out var candidate)
-          && candidate.ValueKind == JsonValueKind.String
-          && string.Equals(candidate.GetString(), value, StringComparison.OrdinalIgnoreCase)
-          && element.TryGetProperty("publicId", out var publicId))
-      {
-        return publicId.GetString();
-      }
-
-      foreach (var child in element.EnumerateObject())
-      {
-        if (FindPublicId(child.Value, property, value) is { } found)
-        {
-          return found;
-        }
-      }
-    }
-    else if (element.ValueKind == JsonValueKind.Array)
-    {
-      foreach (var item in element.EnumerateArray())
-      {
-        if (FindPublicId(item, property, value) is { } found)
-        {
-          return found;
-        }
-      }
-    }
-
-    return null;
   }
 }

@@ -75,20 +75,33 @@ public sealed class ActivationService(
             return OperationResult.Fail<ActivationStatusDto>(ErrorInfo.Status404NotFound, "Token de activacion invalido.");
         }
 
-        if (!IsTokenValid(user, token))
+        // Solo una cuenta que espera activación se activa con el enlace: una rechazada o
+        // desactivada no vuelve sola, aunque conserve un token.
+        if (!IsTokenValid(user, token) || !IsAwaitingActivation(user))
         {
             return OperationResult.Fail<ActivationStatusDto>(ErrorInfo.Status409Conflict, "Token de activacion expirado o invalido.");
         }
 
         user.IsEmailVerified = true;
-        user.IsActive = true;
-        user.Status = UserStatusCatalog.Active;
         user.EmailVerificationToken = null;
         user.EmailVerificationTokenExpiration = null;
         user.EmailVerificationLastSentAt = null;
         user.EmailVerificationResendWindowStartAt = null;
         user.EmailVerificationResendCount = 0;
 
+        if (user.Status == UserStatusCatalog.PendingApproval)
+        {
+            // Correo confirmado, pero la cuenta sigue esperando la aprobación de un administrador.
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return OperationResult.Ok(new ActivationStatusDto(
+              user.Email,
+              false,
+              "Correo confirmado. Tu cuenta queda pendiente de aprobacion de un administrador.",
+              BuildLoginUrl()));
+        }
+
+        user.IsActive = true;
+        user.Status = UserStatusCatalog.Active;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Best-effort: la activacion ya se guardo, un fallo de correo aqui no debe hacer fallar
@@ -123,7 +136,7 @@ public sealed class ActivationService(
         }
 
         var user = await _repository.GetByEmailAsync(email.Trim(), cancellationToken);
-        if (user == null || user.IsDeleted || user.IsActive)
+        if (user == null || user.IsDeleted || user.IsActive || user.IsEmailVerified || !IsAwaitingActivation(user))
         {
             return OperationResult.Ok(NeutralResendResponse());
         }
@@ -166,8 +179,10 @@ public sealed class ActivationService(
             return OperationResult.Fail<ActivationStatusDto>(ErrorInfo.Status403Forbidden, UserAccessHierarchy.InsufficientLevelMessage);
         }
 
+        // La aprobación activa la cuenta, pero no prueba de quién es el correo: IsEmailVerified queda
+        // como estaba. Así, si alguien registró el correo de otra persona, el primer inicio de sesión
+        // del dueño real con Google invalida la contraseña de quien la registró.
         user.IsActive = true;
-        user.IsEmailVerified = true;
         user.Status = UserStatusCatalog.Active;
         user.EmailVerificationToken = null;
         user.EmailVerificationTokenExpiration = null;
@@ -231,6 +246,10 @@ public sealed class ActivationService(
             return OperationResult.Fail<ActivationStatusDto>(ErrorInfo.Status409Conflict, "El usuario ya esta activo.");
         }
 
+        // El administrador decide reabrir la cuenta (por ejemplo, una rechazada): vuelve a esperar
+        // activación, y el enlace la activa sin una aprobación adicional.
+        user.Status = UserStatusCatalog.Pending;
+
         var token = IssueActivationToken(user);
         IncreaseResendWindow(user);
 
@@ -254,6 +273,9 @@ public sealed class ActivationService(
           "Correo de activacion reenviado correctamente.",
           BuildLoginUrl()));
     }
+
+    private static bool IsAwaitingActivation(User user)
+        => user.Status is UserStatusCatalog.Pending or UserStatusCatalog.PendingApproval;
 
     public Task<OperationResult<bool>> SendTestEmailAsync(string? subject, string? body, CancellationToken cancellationToken, bool fakeMail = false)
         => _emailService.SendTestEmailAsync(subject, body, cancellationToken, fakeMail);

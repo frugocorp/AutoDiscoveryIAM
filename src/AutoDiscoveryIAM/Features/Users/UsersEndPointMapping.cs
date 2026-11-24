@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUserByAdmin;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Activation;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUserRoles;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.DeleteMyAccount;
@@ -37,6 +38,7 @@ public static class UsersEndPointMapping
     GetRolesByPublicIdEndPoint.MapGetRolesByPublicIdEndpoint(app);
     GetPermissionsByPublicIdEndPoint.MapGetPermissionsByPublicIdEndpoint(app);
     CreateUserEndPoint.MapCreateUserEndpoint(app);
+    CreateUserByAdminEndPoint.MapCreateUserByAdminEndpoint(app);
     ActivationEndPoint.MapActivationEndpoints(app);
     PasswordManagementEndPoint.MapPasswordManagementEndpoints(app);
     TwoFactorEndPoint.MapTwoFactorEndpoints(app);

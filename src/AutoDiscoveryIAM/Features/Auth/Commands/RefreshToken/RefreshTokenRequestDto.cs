@@ -14,17 +14,17 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshTo
 /// </summary>
 /// <param name="RefreshToken">
 /// Token de renovación proporcionado durante el login. Validado por <see cref="RefreshTokenCommandValidator"/> y las reglas de <see cref="AuthValidationRules"/>.
+/// Opcional cuando el refresh token viaja en cookie (<c>RefreshTokenSettings:Delivery</c>).
 /// </param>
 public record RefreshTokenRequestDto(
-  [Required(ErrorMessage = "El refresh token es requerido")]
-  string RefreshToken)
+  string? RefreshToken = null)
 {
   /// <summary>
   /// Conversion implícita de DTO a Command.
   /// </summary>
   public static implicit operator RefreshTokenCommand(RefreshTokenRequestDto dto)
   {
-    return new RefreshTokenCommand(dto.RefreshToken);
+    return new RefreshTokenCommand(dto.RefreshToken ?? string.Empty);
   }
 }
 
@@ -36,11 +36,14 @@ public static class RefreshTokenRequestDtoExtensions
   /// <summary>
   /// Convierte el DTO a Command incluyendo información de contexto HTTP.
   /// </summary>
-  public static RefreshTokenCommand ToCommand(this RefreshTokenRequestDto dto, HttpContext context)
+  public static RefreshTokenCommand ToCommand(this RefreshTokenRequestDto? dto, HttpContext context, string? cookieToken = null)
   {
     var ipAddress = context.Connection.RemoteIpAddress?.ToString();
     var userAgent = context.Request.Headers.UserAgent.ToString();
 
-    return new RefreshTokenCommand(dto.RefreshToken, ipAddress, userAgent);
+    // El cuerpo manda; la cookie solo se usa si el cuerpo no trae el token.
+    var refreshToken = string.IsNullOrEmpty(dto?.RefreshToken) ? cookieToken : dto.RefreshToken;
+
+    return new RefreshTokenCommand(refreshToken ?? string.Empty, ipAddress, userAgent);
   }
 }

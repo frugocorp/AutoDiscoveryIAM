@@ -7,6 +7,7 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Entities;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Auth;
 using AwesomeAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
@@ -22,6 +23,7 @@ public class RefreshTokenHandlerTests
     private readonly ISecurityEventLogger _securityEventLogger;
     private readonly IOptions<JwtSettings> _jwtSettings;
     private readonly IJwtClaimsFactory _jwtClaimsFactory;
+    private readonly IRefreshTokenGraceStore _graceStore = Substitute.For<IRefreshTokenGraceStore>();
     private readonly RefreshTokenHandler _handler;
 
     public RefreshTokenHandlerTests()
@@ -42,7 +44,7 @@ public class RefreshTokenHandlerTests
         _jwtSettings.Value.Returns(settings);
         _jwtClaimsFactory = new JwtClaimsFactory(_jwtSettings);
 
-        _handler = new RefreshTokenHandler(_refreshTokenRepository, _refreshTokenService, _authLogger, _jwtClaimsFactory, _jwtSettings, _securityEventLogger);
+        _handler = CreateHandler(gracePeriodSeconds: 0);
     }
 
     [Fact]
@@ -211,6 +213,186 @@ public class RefreshTokenHandlerTests
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    private RefreshTokenHandler CreateHandler(int gracePeriodSeconds) => new(
+        _refreshTokenRepository,
+        _refreshTokenService,
+        _authLogger,
+        _jwtClaimsFactory,
+        _jwtSettings,
+        _securityEventLogger,
+        _graceStore,
+        Options.Create(new RefreshTokenSettings { ReuseGracePeriodSeconds = gracePeriodSeconds }));
+
+    private static RefreshTokenEntity BuildRecentlyRotatedToken(string tokenValue, User user, string successorHash, TimeSpan rotatedAgo)
+    {
+        var token = BuildActiveToken(tokenValue, user);
+        token.IsRevoked = true;
+        token.RevocationReason = "Token rotated";
+        token.RevokedAt = TimeHelpers.GetCurrentMexicoTime() - rotatedAgo;
+        token.ReplacedByToken = successorHash;
+        return token;
+    }
+
+    [Fact(DisplayName = "Ventana de gracia: reusar un token recién rotado devuelve el mismo par sin revocar la sesión")]
+    public async Task Handle_WithinGracePeriod_ReturnsSamePairWithoutRevoking()
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromSeconds(5));
+        var successor = BuildActiveToken("successor-hash", user);
+        var cachedPair = new RefreshTokenResponseDto("access", "successor-plain", "Bearer", 3600, DateTime.UtcNow.AddHours(1));
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+        _refreshTokenRepository.GetByHashAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(successor);
+        _graceStore.GetAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(cachedPair);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token"), CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().Be(cachedPair);
+        await _refreshTokenRepository.DidNotReceive().RevokeUserTokensAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _refreshTokenService.DidNotReceive().GenerateRefreshToken(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Theory(DisplayName = "Ventana de gracia desde otro cliente (otra IP u otro User-Agent): se trata como reuso y revoca toda la sesión")]
+    [InlineData("10.0.0.9", "Navegador/1.0")]
+    [InlineData("10.0.0.1", "OtroBot/2.0")]
+    [InlineData(null, "Navegador/1.0")]
+    public async Task Handle_WithinGracePeriodFromAnotherClient_RevokesSession(string? ipAddress, string userAgent)
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromSeconds(5));
+        var successor = BuildActiveToken("successor-hash", user);
+        successor.IpAddress = "10.0.0.1";
+        successor.UserAgent = "Navegador/1.0";
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+        _refreshTokenRepository.GetByHashAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(successor);
+        _graceStore.GetAsync("successor-hash", Arg.Any<CancellationToken>())
+            .Returns(new RefreshTokenResponseDto("access", "successor-plain", "Bearer", 3600, DateTime.UtcNow.AddHours(1)));
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token", ipAddress, userAgent), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.ErrorInfo.Should().Be(ErrorInfo.Status401Unauthorized);
+        await _refreshTokenRepository.Received(1).RevokeUserTokensAsync(user.Id, "refresh_token_reuse_detected", Arg.Any<CancellationToken>());
+        await _graceStore.DidNotReceive().GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _securityEventLogger.Received(1).LogSecurityEvent(
+            SecurityEventType.RefreshTokenReuseDetected, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [Fact(DisplayName = "Ventana de gracia desde el mismo cliente de la rotación: devuelve el mismo par")]
+    public async Task Handle_WithinGracePeriodFromSameClient_ReturnsSamePair()
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromSeconds(5));
+        var successor = BuildActiveToken("successor-hash", user);
+        successor.IpAddress = "10.0.0.1";
+        successor.UserAgent = "Navegador/1.0";
+        var cachedPair = new RefreshTokenResponseDto("access", "successor-plain", "Bearer", 3600, DateTime.UtcNow.AddHours(1));
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+        _refreshTokenRepository.GetByHashAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(successor);
+        _graceStore.GetAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(cachedPair);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token", "10.0.0.1", "Navegador/1.0"), CancellationToken.None);
+
+        result.Data.Should().Be(cachedPair);
+        await _refreshTokenRepository.DidNotReceive().RevokeUserTokensAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact(DisplayName = "Ventana de gracia sin par guardado: 401 sin revocar la sesión")]
+    public async Task Handle_WithinGracePeriodWithoutCachedPair_ReturnsUnauthorizedWithoutRevoking()
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromSeconds(5));
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+        _refreshTokenRepository.GetByHashAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(BuildActiveToken("successor-hash", user));
+        _graceStore.GetAsync("successor-hash", Arg.Any<CancellationToken>()).Returns((RefreshTokenResponseDto?)null);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token"), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.ErrorInfo.Should().Be(ErrorInfo.Status401Unauthorized);
+        await _refreshTokenRepository.DidNotReceive().RevokeUserTokensAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact(DisplayName = "Ventana de gracia: si el token sustituto ya se revocó (logout), no se devuelve el par")]
+    public async Task Handle_WithinGracePeriodButSuccessorRevoked_ReturnsUnauthorized()
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromSeconds(5));
+        var successor = BuildActiveToken("successor-hash", user);
+        successor.IsRevoked = true;
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+        _refreshTokenRepository.GetByHashAsync("successor-hash", Arg.Any<CancellationToken>()).Returns(successor);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token"), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        await _graceStore.DidNotReceive().GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact(DisplayName = "Fuera de la ventana de gracia el reuso revoca toda la sesión")]
+    public async Task Handle_OutsideGracePeriod_DetectsReuse()
+    {
+        var user = BuildActiveUser();
+        var rotated = BuildRecentlyRotatedToken("rotated-token", user, "successor-hash", TimeSpan.FromMinutes(2));
+        _refreshTokenRepository.GetByTokenAsync("rotated-token", Arg.Any<CancellationToken>()).Returns(rotated);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("rotated-token"), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        await _refreshTokenRepository.Received(1).RevokeUserTokensAsync(user.Id, "refresh_token_reuse_detected", Arg.Any<CancellationToken>());
+    }
+
+    [Fact(DisplayName = "Con ventana de gracia, la rotación guarda el par identificado por el token nuevo")]
+    public async Task Handle_RotationWithGracePeriod_StoresPairByNewTokenHash()
+    {
+        var user = BuildActiveUser();
+        var storedToken = BuildActiveToken("valid-token", user);
+        var newRefreshToken = BuildActiveToken("new-hash", user);
+        newRefreshToken.PlaintextToken = "new-plain";
+        _refreshTokenRepository.GetByTokenAsync("valid-token", Arg.Any<CancellationToken>()).Returns(storedToken);
+        _refreshTokenService.ValidateRefreshToken(storedToken).Returns(true);
+        _refreshTokenService.GenerateRefreshToken(user, Arg.Any<string>(), Arg.Any<string>()).Returns(newRefreshToken);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("valid-token"), CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        await _graceStore.Received(1).StoreAsync(
+            "new-hash",
+            Arg.Is<RefreshTokenResponseDto>(r => r.RefreshToken == "new-plain"),
+            TimeSpan.FromSeconds(30),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact(DisplayName = "Con ventana de gracia, la petición que pierde la carrera recibe el par de la que ganó")]
+    public async Task Handle_ConcurrentRotationWithGracePeriod_ReturnsWinnerPair()
+    {
+        var user = BuildActiveUser();
+        var storedToken = BuildActiveToken("valid-token", user);
+        var winnerPair = new RefreshTokenResponseDto("access", "winner-plain", "Bearer", 3600, DateTime.UtcNow.AddHours(1));
+        _refreshTokenRepository.GetByTokenAsync("valid-token", Arg.Any<CancellationToken>()).Returns(storedToken);
+        _refreshTokenService.ValidateRefreshToken(storedToken).Returns(true);
+        _refreshTokenService.GenerateRefreshToken(user, Arg.Any<string>(), Arg.Any<string>()).Returns(BuildActiveToken("loser-hash", user));
+        _refreshTokenRepository.UpdateAsync(Arg.Any<RefreshTokenEntity>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new DbUpdateConcurrencyException("conflict"));
+        // La recarga trae lo que guardó la petición ganadora.
+        _refreshTokenRepository.ReloadAsync(storedToken, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            storedToken.IsRevoked = true;
+            storedToken.RevocationReason = "Token rotated";
+            storedToken.RevokedAt = TimeHelpers.GetCurrentMexicoTime();
+            storedToken.ReplacedByToken = "winner-hash";
+            return Task.CompletedTask;
+        });
+        _refreshTokenRepository.GetByHashAsync("winner-hash", Arg.Any<CancellationToken>()).Returns(BuildActiveToken("winner-hash", user));
+        _graceStore.GetAsync("winner-hash", Arg.Any<CancellationToken>()).Returns(winnerPair);
+
+        var result = await CreateHandler(gracePeriodSeconds: 30).Handle(new RefreshTokenCommand("valid-token"), CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().Be(winnerPair);
+        await _refreshTokenRepository.DidNotReceive().RevokeUserTokensAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     private static User BuildActiveUser() => new()

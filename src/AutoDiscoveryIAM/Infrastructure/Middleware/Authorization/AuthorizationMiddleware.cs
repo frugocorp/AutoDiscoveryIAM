@@ -8,6 +8,7 @@
 #pragma warning disable CA1873 // Avoid potentially expensive logging argument evaluation - same deferred optimization as CA1848 above
 
 using System.Reflection;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.Security.SecurityEvents;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services.AuthContext;
@@ -190,6 +191,14 @@ public class AuthorizationMiddleware
     {
       _logger.LogWarning("User {UserId} denied access to {Path} - user is inactive", userPublicId, context.Request.Path);
       throw new InsufficientPermissionsException(AuthorizationValidationTypes.Messages.UserInactive);
+    }
+
+    // Contraseña temporal de un administrador: nada que exija permisos (ni siquiera con flags)
+    // hasta cambiarla. Los endpoints propios de la cuenta ([PermissionsNotRequired]) siguen abiertos.
+    if (currentUser.MustChangePassword)
+    {
+      _logger.LogWarning("User {UserId} denied access to {Path} - password change required", userPublicId, context.Request.Path);
+      throw new InsufficientPermissionsException(AuthorizationValidationTypes.Messages.PasswordChangeRequired, ErrorInfo.PasswordChangeRequired);
     }
 
     return (currentUser, userPublicId.Value);

@@ -49,3 +49,35 @@ Este ejemplo incluye todas las piezas completas a propósito — es más fácil 
 ## Por qué no hay un `Data/UoW/` propio en este ejemplo
 
 A diferencia de un ejemplo con dos `DbContext` separados, aquí `CreateUserProfileHandler` inyecta y usa directamente `IAutoDiscoveryIAMUnitOfWork` (de la librería, `FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data.UoW`) — no necesitas construir tu propio Unit of Work. En modo contexto único, `ApplicationDbContext` **es** (por herencia) un `AutoDiscoveryIAMDbContext`, así que `IAutoDiscoveryIAMUnitOfWork.SaveChangesAsync()` guarda también tus propias entidades (`UserProfile`), porque es literalmente la misma instancia de `DbContext` detrás de ambos. Si en cambio usaras dos `DbContext` separados, sí necesitarías tu propio Unit of Work para el tuyo (ver [Elige tu propio DbContext: uno o dos](/docs/security-rbac/audit-soft-delete#elige-tu-propio-dbcontext-uno-o-dos)).
+
+## Crear el usuario y su perfil en una sola operación
+
+Si tu app da de alta personas con sus datos propios (por ejemplo `POST /empleados`), no llames al endpoint `POST /users/by-admin` y luego a tu slice: inyecta `IUserProvisioningService` (`FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.Provisioning`) en tu handler. Aplica las mismas reglas que `POST /users/by-admin`: valida usuario, correo y fuerza de la contraseña (400), rechaza un correo o usuario repetido (409), asigna el rol por defecto, envía el correo de invitación o de activación, deja el correo sin verificar y `MustChangePassword` en `true` salvo que pidas `false`. Es un uso soportado y estable entre versiones.
+
+La sobrecarga con `beforeSave` te entrega el usuario nuevo, todavía sin guardar, para que agregues tu entidad ligada a él. Se liga por navegación (`User = user`), porque el usuario aún no tiene `Id`:
+
+````code-block
+```csharp
+var result = await provisioning.CreateAsync(
+    new ProvisionUserRequest(command.Username, command.Email, Password: null, Activate: false),
+    (user, ct) =>
+    {
+        context.UserProfiles.Add(new UserProfile { User = user, Occupation = command.Occupation });
+        return Task.CompletedTask;
+    },
+    cancellationToken);
+if (!result.Success)
+{
+    return OperationResult.Fail<CrearEmpleadoResponseDto>(result.ErrorInfo!, result.Error!);
+}
+```
+````
+
+Qué garantiza:
+
+- **Todo o nada.** El usuario, su rol por defecto y tu entidad se guardan en un solo `SaveChangesAsync`. Si `beforeSave` lanza una excepción, no se guarda nada, no sale ningún correo y el usuario sale del contexto, así que un guardado posterior tampoco lo crea. La excepción sale tal cual.
+- **El correo va después de tu código.** El correo de invitación o activación se envía después de `beforeSave` y antes de guardar: un fallo tuyo no deja una invitación para una cuenta que no existe.
+- **`beforeSave` solo enlaza.** Si cambia el correo, el usuario, la contraseña, el estado, la verificación o las banderas de administración (`IsAdmin`, `IsDevelopment`, `IsSuAdmin`), el alta se cancela con `InvalidOperationException`.
+- **Mismo `DbContext`.** Para guardar junto, tu entidad tiene que vivir en el mismo contexto que el usuario: el modo de contexto único de este ejemplo (`ApplicationDbContext` hereda de `AutoDiscoveryIAMDbContext`). Con dos contextos separados, cada uno guarda por su cuenta.
+
+El servicio no revisa permisos: tu endpoint tiene su propio permiso (por ejemplo `empleados.crear_empleado`, que aparece con el sync), y con él decides quién puede dar altas. La regla de no escalar privilegios se sigue aplicando al guardar.

@@ -8,9 +8,12 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.TwoFactor;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Infrastructure.Logging;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Models.Entities;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Roles.Models.Entities;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Activation;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Configuration;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Catalogs;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Entities;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.DefaultRole;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -34,7 +37,7 @@ public class ExternalLoginOrchestratorTests
         AutoDiscoveryIAMDbContext DbContext,
         IExternalLoginProvider Provider,
         IActivationService ActivationService,
-        IActivationEmailService ActivationEmailService) CreateSut(string dbName)
+        IActivationEmailService ActivationEmailService) CreateSut(string dbName, RegistrationSettings? registrationSettings = null)
     {
         var dbContext = CreateContext(dbName);
         var provider = Substitute.For<IExternalLoginProvider>();
@@ -75,7 +78,9 @@ public class ExternalLoginOrchestratorTests
           activationEmailService,
           twoFactorCodeGenerator,
           Substitute.For<ITwoFactorEmailService>(),
-          Options.Create(new TwoFactorSettings()));
+          Options.Create(new TwoFactorSettings()),
+          new DefaultRoleAssignmentService(dbContext),
+          Options.Create(registrationSettings ?? new RegistrationSettings()));
 
         return (orchestrator, dbContext, provider, activationService, activationEmailService);
     }
@@ -120,6 +125,62 @@ public class ExternalLoginOrchestratorTests
 
         var link = await dbContext.ExternalLogins.SingleAsync(x => x.UserId == createdUser.Id, CancellationToken.None);
         link.ProviderId.Should().Be(ExternalProviderIdHasher.Hash(profile.ProviderId));
+    }
+
+    [Fact(DisplayName = "Registro con Google apagado: un correo nuevo no crea cuenta y responde REGISTRATION_DISABLED")]
+    public async Task HandleCallbackAsync_WhenRegistrationDisabledAndUserIsNew_DoesNotCreateUser()
+    {
+        var settings = new RegistrationSettings();
+        settings.ExternalProviders["Google"] = false;
+        var (orchestrator, dbContext, provider, _, activationEmailService) =
+          CreateSut(nameof(HandleCallbackAsync_WhenRegistrationDisabledAndUserIsNew_DoesNotCreateUser), settings);
+        var profile = Profile();
+        provider.ExchangeCodeAsync("code", Arg.Any<CancellationToken>()).Returns(OperationResult.Ok(profile));
+
+        var result = await orchestrator.HandleCallbackAsync(ExternalLoginProviders.Google, "code", "1.2.3.4", "agent", CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.ErrorInfo.Should().Be(ErrorInfo.RegistrationDisabled);
+        (await dbContext.Users.AnyAsync(u => u.Email == profile.Email, CancellationToken.None)).Should().BeFalse();
+        await activationEmailService.DidNotReceive().SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+    }
+
+    [Fact(DisplayName = "Registro con Google apagado: una cuenta existente sí entra con Google")]
+    public async Task HandleCallbackAsync_WhenRegistrationDisabledAndUserExists_LinksAndSignsIn()
+    {
+        var settings = new RegistrationSettings();
+        settings.ExternalProviders["google"] = false;
+        var (orchestrator, dbContext, provider, _, _) =
+          CreateSut(nameof(HandleCallbackAsync_WhenRegistrationDisabledAndUserExists_LinksAndSignsIn), settings);
+        var profile = Profile(email: "existente@example.com");
+        dbContext.Users.Add(new User { Username = "existente", Email = profile.Email, PasswordHash = "hash", IsActive = true, IsEmailVerified = true, Status = UserStatusCatalog.Active });
+        await dbContext.SaveChangesAsync(CancellationToken.None);
+        provider.ExchangeCodeAsync("code", Arg.Any<CancellationToken>()).Returns(OperationResult.Ok(profile));
+
+        var result = await orchestrator.HandleCallbackAsync(ExternalLoginProviders.Google, "code", "1.2.3.4", "agent", CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        (await dbContext.Users.CountAsync(u => u.Email == profile.Email, CancellationToken.None)).Should().Be(1);
+    }
+
+    [Fact(DisplayName = "Alta por Google: el usuario nuevo recibe el rol por defecto")]
+    public async Task HandleCallbackAsync_WhenUserIsNew_AssignsDefaultRole()
+    {
+        var (orchestrator, dbContext, provider, _, _) =
+          CreateSut(nameof(HandleCallbackAsync_WhenUserIsNew_AssignsDefaultRole));
+        dbContext.Roles.Add(new Role { Name = "UserDefault", IsActive = true, IsDefaultForNewUser = true });
+        await dbContext.SaveChangesAsync(CancellationToken.None);
+        var profile = Profile();
+        provider.ExchangeCodeAsync("code", Arg.Any<CancellationToken>()).Returns(OperationResult.Ok(profile));
+
+        await orchestrator.HandleCallbackAsync(ExternalLoginProviders.Google, "code", "1.2.3.4", "agent", CancellationToken.None);
+
+        var createdUser = await dbContext.Users.SingleAsync(u => u.Email == profile.Email, CancellationToken.None);
+        var roleNames = await dbContext.UserRoles
+          .Where(ur => ur.UserId == createdUser.Id)
+          .Select(ur => ur.Role.Name)
+          .ToListAsync(CancellationToken.None);
+        roleNames.Should().ContainSingle().Which.Should().Be("UserDefault");
     }
 
     [Fact]

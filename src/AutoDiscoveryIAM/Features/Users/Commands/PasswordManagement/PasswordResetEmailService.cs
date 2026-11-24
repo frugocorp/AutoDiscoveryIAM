@@ -10,6 +10,12 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Password
 public interface IPasswordResetEmailService
 {
   Task<OperationResult<bool>> SendPasswordResetEmailAsync(User user, string token, CancellationToken cancellationToken, bool fakeMail = false);
+
+  /// <summary>
+  /// Invitación a una cuenta creada por un administrador sin contraseña: el enlace (el mismo del
+  /// restablecimiento) le permite al usuario definir la suya.
+  /// </summary>
+  Task<OperationResult<bool>> SendPasswordSetupEmailAsync(User user, string token, CancellationToken cancellationToken, bool fakeMail = false);
 }
 
 public sealed class PasswordResetEmailService(
@@ -25,6 +31,18 @@ public sealed class PasswordResetEmailService(
     const string subject = "Restablece tu contrasena";
     var body = BuildResetBody(user, resetLink);
     return _mailSender.SendAsync(user.Email, subject, body, cancellationToken, fakeMail);
+  }
+
+  public Task<OperationResult<bool>> SendPasswordSetupEmailAsync(User user, string token, CancellationToken cancellationToken, bool fakeMail = false)
+  {
+    var setupLink = BuildResetLink(token);
+    const string subject = "Define tu contrasena";
+    var sb = new StringBuilder();
+    sb.Append("<p>Hola ").Append(WebUtility.HtmlEncode(user.Username)).Append(",</p>");
+    sb.Append("<p>Un administrador creo una cuenta para ti. Define tu contrasena con el siguiente enlace:</p>");
+    sb.Append("<p><a href=\"").Append(WebUtility.HtmlEncode(setupLink)).Append("\">Definir contrasena</a></p>");
+    sb.Append("<p>Si el enlace vencio, usa la opcion de restablecer contrasena con este mismo correo.</p>");
+    return _mailSender.SendAsync(user.Email, subject, sb.ToString(), cancellationToken, fakeMail);
   }
 
   private string BuildResetLink(string token)

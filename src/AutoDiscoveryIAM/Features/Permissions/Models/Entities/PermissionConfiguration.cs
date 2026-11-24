@@ -8,11 +8,16 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Permissions.Models.Enti
 /// </summary>
 public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
 {
+  /// <summary>
+  /// Largo máximo de <see cref="Permission.Description"/> en la base de datos.
+  /// </summary>
+  internal const int DescriptionMaxLength = 500;
+
   public void Configure(EntityTypeBuilder<Permission> builder)
   {
     builder.HasKey(p => p.Id);
     builder.Property(p => p.Key).IsRequired().HasMaxLength(200);
-    builder.Property(p => p.Description).HasMaxLength(500);
+    builder.Property(p => p.Description).HasMaxLength(DescriptionMaxLength);
     builder.Property(p => p.Group).HasMaxLength(100);
     builder.Property(p => p.IsActive).IsRequired().HasDefaultValue(true);
     builder.Property(p => p.IsSystemGenerated).IsRequired().HasDefaultValue(false);

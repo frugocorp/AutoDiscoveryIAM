@@ -31,6 +31,12 @@ public class InsufficientPermissionsException : Exception
         UserId = userId;
     }
 
+    public InsufficientPermissionsException(string message, ErrorInfo errorInfo)
+        : base(message)
+    {
+        ErrorInfo = errorInfo;
+    }
+
     public InsufficientPermissionsException(string message, Exception innerException)
         : base(message, innerException)
     {

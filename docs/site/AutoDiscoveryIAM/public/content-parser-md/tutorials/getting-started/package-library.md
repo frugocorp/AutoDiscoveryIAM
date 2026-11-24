@@ -57,7 +57,7 @@ Remove-Item -Recurse -Force "$env:USERPROFILE\.nuget\packages\frugocorp.aspnetco
 ```
 ````
 
-Reemplaza `<version>` por la versión real que empaquetaste (ej. `0.1.0`). Esto borra solo la copia en caché de esta librería — no toca la caché de ningún otro proyecto .NET en tu máquina.
+Reemplaza `<version>` por la versión real que empaquetaste (ej. `0.2.0`). Esto borra solo la copia en caché de esta librería — no toca la caché de ningún otro proyecto .NET en tu máquina.
 
 > Si PowerShell responde `No se encuentra la ruta de acceso ... porque no existe`, no es un error que te bloquee — significa que esa caché ya estaba limpia (por ejemplo, si ya la habías borrado antes). Puedes seguir directo al siguiente paso.
 

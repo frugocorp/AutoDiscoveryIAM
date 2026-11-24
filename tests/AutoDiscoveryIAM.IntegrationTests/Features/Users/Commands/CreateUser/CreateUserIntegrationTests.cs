@@ -11,6 +11,8 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Validation;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Features.Users.Commands.CreateUser;
@@ -375,5 +377,47 @@ public class CreateUserIntegrationTests(CustomWebApplicationFactory<Program> fac
     result.Data.Should().BeNull();
     var expectedError = UserValidationTypes.PasswordMaxLength.Message;
     result.Error.Should().Contain(expectedError);
+  }
+
+  [Fact(DisplayName = "POST /users con Registration:EmailPasswordEnabled=false responde 403 REGISTRATION_DISABLED y no crea nada")]
+  public async Task CreateUser_WhenEmailRegistrationDisabled_ReturnsForbiddenAndCreatesNothing()
+  {
+    using var disabledFactory = factory.WithWebHostBuilder(builder => builder.UseSetting("Registration:EmailPasswordEnabled", "false"));
+    var client = disabledFactory.CreateClient();
+    long ticks = DateTime.UtcNow.Ticks;
+    var email = $"regdisabled_{ticks}@example.com";
+
+    var response = await client.PostAsJsonAsync("/users", new CreateUserRequestDto($"regdisabled_{ticks}", email, "TestPass123*"), _cancellationToken);
+
+    response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    var result = await response.Content.ReadFromJsonAsync<CreateUserResponse>(_cancellationToken);
+    result!.Success.Should().BeFalse();
+    result.ErrorInfo!.Key.Should().Be(ErrorInfo.RegistrationDisabled.Key);
+    using var scope = disabledFactory.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AutoDiscoveryIAMDbContext>();
+    (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email, _cancellationToken)).Should().BeFalse();
+  }
+
+  [Fact(DisplayName = "POST /users anónimo: el usuario nuevo recibe el rol por defecto (IsDefaultForNewUser)")]
+  public async Task CreateUser_Anonymous_AssignsDefaultRole()
+  {
+    var anonymousClient = factory.CreateClient();
+    long ticks = DateTime.UtcNow.Ticks;
+    var email = $"defaultrole_{ticks}@example.com";
+
+    var response = await anonymousClient.PostAsJsonAsync("/users", new CreateUserRequestDto($"defaultrole_{ticks}", email, "TestPass123*"), _cancellationToken);
+
+    response.EnsureSuccessStatusCode();
+    using var scope = factory.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AutoDiscoveryIAMDbContext>();
+    var roleNames = await db.UserRoles
+      .Where(ur => ur.User.Email == email)
+      .Select(ur => ur.Role.Name)
+      .ToListAsync(_cancellationToken);
+    var defaultRoleName = await db.Roles
+      .Where(r => r.IsDefaultForNewUser)
+      .Select(r => r.Name)
+      .SingleAsync(_cancellationToken);
+    roleNames.Should().ContainSingle().Which.Should().Be(defaultRoleName);
   }
 }

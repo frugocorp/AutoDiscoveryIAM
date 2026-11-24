@@ -3,6 +3,6 @@
        analizadores ni TreatWarningsAsErrors de la librería. AdiamVersion es la versión del paquete
        que se prueba; cámbiala aquí (o pasa -p:AdiamVersion=...) antes de restaurar. -->
   <PropertyGroup>
-    <AdiamVersion Condition="'$(AdiamVersion)' == ''">0.1.0</AdiamVersion>
+    <AdiamVersion Condition="'$(AdiamVersion)' == ''">0.2.0</AdiamVersion>
   </PropertyGroup>
 </Project>

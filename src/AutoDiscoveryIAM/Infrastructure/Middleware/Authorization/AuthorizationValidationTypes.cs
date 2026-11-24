@@ -215,6 +215,8 @@ public sealed class AuthorizationValidationTypes
         /// </summary>
         public const string UserInactive = "El usuario autenticado está inactivo y no puede acceder a este recurso";
 
+        public const string PasswordChangeRequired = "Debes cambiar la contraseña que te asignó un administrador antes de usar este recurso (POST /users/me/password)";
+
         /// <summary>
         /// Template para mensaje de permiso específico requerido.
         /// Uso: string.Format(PermissionRequired, "nombre_permiso")

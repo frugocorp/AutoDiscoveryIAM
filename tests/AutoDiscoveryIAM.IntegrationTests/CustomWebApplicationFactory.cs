@@ -117,9 +117,11 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests
           var db = scope.ServiceProvider.GetRequiredService<AutoDiscoveryIAMDbContext>();
           CleanUpDbAfterTests.CleanupTestData(db);
         }
-        catch
+        catch (Exception ex)
         {
-          // No interrumpir la finalización del test runner por cleanup best-effort.
+          // No se interrumpe el cierre del runner, pero el fallo queda a la vista: la siguiente
+          // corrida igual limpia al arrancar y falla si no lo logra (EnsureOnlySeedDataRemains).
+          Console.Error.WriteLine($"********* CustomWebApplicationFactory -- La limpieza de la base de pruebas falló al cerrar: {ex}");
         }
       }
 
@@ -175,6 +177,7 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests
       if (IsUsingRealDatabase())
       {
         CleanUpDbAfterTests.CleanupTestData(db);
+        CleanUpDbAfterTests.EnsureOnlySeedDataRemains(db);
       }
 
       // Seed test users if database is empty

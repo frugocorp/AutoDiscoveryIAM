@@ -28,6 +28,7 @@ public static class SyncPermissionsDI
   {
     // Registrar servicios internos del comando como Scoped
     services.AddScoped<IEndpointDiscoveryService, EndpointDiscoveryService>();
+    services.AddScoped<SyncEndpointSource>();
     services.AddScoped<IDiscoveryPermissionsService, DiscoveryPermissionsService>();
     services.AddScoped<ISyncPermissionsService, SyncPermissionsService>();
 

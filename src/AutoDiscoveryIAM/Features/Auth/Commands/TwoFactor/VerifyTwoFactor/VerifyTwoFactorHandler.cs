@@ -164,6 +164,6 @@ public class VerifyTwoFactorHandler(
     var refreshTokenEntity = _refreshTokenService.GenerateRefreshToken(user, command.IpAddress, command.UserAgent);
     await _refreshTokenRepository.CreateAsync(refreshTokenEntity, cancellationToken);
 
-    return new LoginResponseDto(tokenString, expiresAt, refreshTokenEntity.PlaintextToken!);
+    return new LoginResponseDto(tokenString, expiresAt, refreshTokenEntity.PlaintextToken!, PasswordChangeRequired: user.MustChangePassword);
   }
 }

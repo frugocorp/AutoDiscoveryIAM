@@ -39,6 +39,7 @@ public sealed class CreateUserOperationDocs : EndpointOperationDocs
   protected override IReadOnlyDictionary<int, ErrorInfo> ErrorResponses { get; } = new Dictionary<int, ErrorInfo>
   {
     [ErrorInfo.Status400Validation.StatusCode] = ErrorInfo.Status400Validation,
+    [ErrorInfo.RegistrationDisabled.StatusCode] = ErrorInfo.RegistrationDisabled,
     [ErrorInfo.Status409Conflict.StatusCode] = ErrorInfo.Status409Conflict,
     [ErrorInfo.Status424Dependency.StatusCode] = ErrorInfo.Status424Dependency,
   };

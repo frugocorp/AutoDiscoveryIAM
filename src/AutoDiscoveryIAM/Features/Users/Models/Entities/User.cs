@@ -68,6 +68,12 @@ public class User : AuditableEntity
   public DateTime TokenValidFrom { get; set; } = TimeHelpers.GetCurrentMexicoTime();
 
   /// <summary>
+  /// La contraseña actual la definió un administrador: hasta que el usuario la cambie, solo puede
+  /// usar los endpoints propios de su cuenta (los que no exigen permisos), no los de RBAC.
+  /// </summary>
+  public bool MustChangePassword { get; set; }
+
+  /// <summary>
   /// Token de concurrencia optimista — SQL Server lo actualiza automáticamente en
   /// cada UPDATE; un update concurrente sobre una fila desactualizada falla con 409 en vez de
   /// pisar silenciosamente los cambios de otro usuario.

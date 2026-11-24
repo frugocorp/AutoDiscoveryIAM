@@ -37,6 +37,7 @@ public sealed class GoogleCallbackOperationDocs : EndpointOperationDocs
   {
     [ErrorInfo.Status400Validation.StatusCode] = ErrorInfo.Status400Validation,
     [ErrorInfo.Status401Unauthorized.StatusCode] = ErrorInfo.Status401Unauthorized,
+    [ErrorInfo.RegistrationDisabled.StatusCode] = ErrorInfo.RegistrationDisabled,
     [ErrorInfo.Status424Dependency.StatusCode] = ErrorInfo.Status424Dependency,
   };
 }

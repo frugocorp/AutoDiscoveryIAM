@@ -7,9 +7,11 @@
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser.Docs;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Configuration;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
 
@@ -21,8 +23,17 @@ public static class CreateUserEndPoint
         CreateUserRequestDto dto,
         CreateUserHandler handler,
         CreateUserCommandValidator validator,
+        IOptions<RegistrationSettings> registrationSettings,
         CancellationToken cancellationToken) =>
     {
+      // Con el registro por correo apagado, el endpoint responde lo mismo para cualquier cuerpo:
+      // ni siquiera valida, para no revelar nada de las reglas ni de las cuentas existentes.
+      if (!registrationSettings.Value.EmailPasswordEnabled)
+      {
+        var disabled = new CreateUserResponse(false, null, "El registro con correo y contraseña está deshabilitado.", ErrorInfo.RegistrationDisabled);
+        return Results.Json(disabled, statusCode: ErrorInfo.RegistrationDisabled.StatusCode);
+      }
+
       var command = new CreateUserCommand(
         dto.Username,
         dto.Email,
@@ -53,10 +64,11 @@ public static class CreateUserEndPoint
     .WithName("CreateUser")
     .WithTags("Users")
     .WithSummary("Registra un nuevo usuario (cuenta local).")
-    .WithDescription("Crea una cuenta local con contraseña y dispara el flujo de activación por correo. No requiere autenticación: es el endpoint público de registro.")
+    .WithDescription("Crea una cuenta local con contraseña y dispara el flujo de activación por correo. No requiere autenticación: es el endpoint público de registro. Responde 403 (REGISTRATION_DISABLED) si Registration:EmailPasswordEnabled es false.")
     .Accepts<CreateUserRequestDto>("application/json")
     .Produces<CreateUserResponse>(StatusCodes.Status200OK, "application/json")
     .Produces<ApiResponse<object>>(ErrorInfo.Status400Validation.StatusCode, "application/json")
+    .Produces<ApiResponse<object>>(ErrorInfo.RegistrationDisabled.StatusCode, "application/json")
     .Produces<ApiResponse<object>>(ErrorInfo.Status409Conflict.StatusCode, "application/json")
     .Produces<ApiResponse<object>>(ErrorInfo.Status424Dependency.StatusCode, "application/json")
     .WithMetadata(

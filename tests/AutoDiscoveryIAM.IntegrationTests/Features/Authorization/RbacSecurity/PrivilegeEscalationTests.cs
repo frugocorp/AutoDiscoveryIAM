@@ -28,12 +28,12 @@ public class PrivilegeEscalationTests(CustomWebApplicationFactory<Program> facto
     using var suAdmin = factory.CreateClient();
     await suAdmin.AuthenticateUserAsync(UserType.SuAdmin, CancellationToken.None);
 
-    var adminRolePublicId = await FindPublicIdAsync(suAdmin, "/roles?pageSize=100", "name", AdminRoleName);
-    var managerPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", Manager.Email!);
-    var regularPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", "user@example.com");
-    var strongerPublicId = await FindPublicIdAsync(suAdmin, "/users?pageSize=100", "email", "test@example.com");
-    var assignRolesPermission = await FindPublicIdAsync(suAdmin, "/permissions?pageSize=100", "key", "users.create_user_roles");
-    var updateUserPermission = await FindPublicIdAsync(suAdmin, "/permissions?pageSize=100", "key", "users.update_user");
+    var adminRolePublicId = await TestDataLookup.GetRolePublicIdByNameAsync(factory.Services, AdminRoleName);
+    var managerPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, Manager.Email!);
+    var regularPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, "user@example.com");
+    var strongerPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, "test@example.com");
+    var assignRolesPermission = await TestDataLookup.GetPermissionPublicIdByKeyAsync(factory.Services, "users.create_user_roles");
+    var updateUserPermission = await TestDataLookup.GetPermissionPublicIdByKeyAsync(factory.Services, "users.update_user");
 
     var supportRole = await suAdmin.PostAsJsonAsync("/roles", new { name = $"test-role-escalation-{Guid.NewGuid():N}", description = "Soporte limitado", isActive = true }, CancellationToken.None);
     supportRole.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -74,47 +74,5 @@ public class PrivilegeEscalationTests(CustomWebApplicationFactory<Program> facto
   {
     using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(CancellationToken.None));
     return document.RootElement.GetProperty("data").GetProperty("publicId").GetString()!;
-  }
-
-  private static async Task<string> FindPublicIdAsync(HttpClient client, string url, string property, string value)
-  {
-    var json = await client.GetStringAsync(url, CancellationToken.None);
-    using var document = JsonDocument.Parse(json);
-    return FindPublicId(document.RootElement, property, value)
-      ?? throw new InvalidOperationException($"No se encontró {property}={value} en {url}");
-  }
-
-  private static string? FindPublicId(JsonElement element, string property, string value)
-  {
-    if (element.ValueKind == JsonValueKind.Object)
-    {
-      if (element.TryGetProperty(property, out var candidate)
-          && candidate.ValueKind == JsonValueKind.String
-          && string.Equals(candidate.GetString(), value, StringComparison.OrdinalIgnoreCase)
-          && element.TryGetProperty("publicId", out var publicId))
-      {
-        return publicId.GetString();
-      }
-
-      foreach (var child in element.EnumerateObject())
-      {
-        if (FindPublicId(child.Value, property, value) is { } found)
-        {
-          return found;
-        }
-      }
-    }
-    else if (element.ValueKind == JsonValueKind.Array)
-    {
-      foreach (var item in element.EnumerateArray())
-      {
-        if (FindPublicId(item, property, value) is { } found)
-        {
-          return found;
-        }
-      }
-    }
-
-    return null;
   }
 }

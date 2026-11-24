@@ -8,10 +8,12 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.Security;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data.UoW;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Activation;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Configuration;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Logging;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Validation;
-using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Catalogs;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Models.Entities;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.DefaultRole;
+using Microsoft.Extensions.Options;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
 
@@ -21,7 +23,9 @@ public class CreateUserHandler(
     IAutoDiscoveryIAMUnitOfWork unitOfWork,
   IPasswordHasher passwordHasher,
   IActivationService activationService,
-  IActivationEmailService activationEmailService)
+  IActivationEmailService activationEmailService,
+  IDefaultRoleAssignmentService defaultRoleAssignmentService,
+  IOptions<RegistrationSettings> registrationSettings)
 {
   private readonly ICreateUserRepository _repository = repository;
   private readonly IUserLogger _logger = logger;
@@ -29,6 +33,8 @@ public class CreateUserHandler(
   private readonly IPasswordHasher _passwordHasher = passwordHasher;
   private readonly IActivationService _activationService = activationService;
   private readonly IActivationEmailService _activationEmailService = activationEmailService;
+  private readonly IDefaultRoleAssignmentService _defaultRoleAssignmentService = defaultRoleAssignmentService;
+  private readonly RegistrationSettings _registrationSettings = registrationSettings.Value;
 
   public async Task<OperationResult<CreateUserResponseDto>> Handle(CreateUserCommand command, CancellationToken cancellationToken)
   {
@@ -37,6 +43,7 @@ public class CreateUserHandler(
       Username = command.Username,
       Email = command.Email,
       PasswordHash = _passwordHasher.HashPassword(command.Password),
+      Status = _registrationSettings.SelfRegistrationStatus,
     };
     var exists = await _repository.ExistsByEmailAsync(command.Email, cancellationToken);
     if (exists)
@@ -50,6 +57,7 @@ public class CreateUserHandler(
     }
 
     await _repository.CreateUser(user);
+    await _defaultRoleAssignmentService.AssignDefaultRoleAsync(user, cancellationToken);
 
     var activationToken = _activationService.AssignActivationToken(user);
 
@@ -83,6 +91,6 @@ public class CreateUserHandler(
     // que el correo existe).
     await _activationEmailService.SendRegistrationAttemptNoticeAsync(command.Email, cancellationToken, fakeMail: false);
 
-    return OperationResult.Ok(new CreateUserResponseDto(Guid.NewGuid(), command.Email, command.Username, UserStatusCatalog.Pending));
+    return OperationResult.Ok(new CreateUserResponseDto(Guid.NewGuid(), command.Email, command.Username, _registrationSettings.SelfRegistrationStatus));
   }
 }

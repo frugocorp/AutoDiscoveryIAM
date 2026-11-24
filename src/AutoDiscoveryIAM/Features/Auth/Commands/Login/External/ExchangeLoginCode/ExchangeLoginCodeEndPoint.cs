@@ -7,6 +7,7 @@
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login.External.ExchangeLoginCode.Docs;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshToken;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login.External.ExchangeLoginCode;
@@ -39,6 +40,8 @@ public static class ExchangeLoginCodeEndPoint
     ExchangeLoginCodeRequestDto requestDto,
     ExchangeLoginCodeHandler handler,
     ExchangeLoginCodeCommandValidator validator,
+    IRefreshTokenDelivery refreshTokenDelivery,
+    HttpContext context,
     CancellationToken cancellationToken)
   {
     var command = new ExchangeLoginCodeCommand(requestDto.Code);
@@ -55,7 +58,8 @@ public static class ExchangeLoginCodeEndPoint
 
     if (result.Success)
     {
-      return Results.Ok(new ExchangeLoginCodeResponse(true, result.Data));
+      var data = result.Data! with { RefreshToken = refreshTokenDelivery.Deliver(context, result.Data!.RefreshToken) };
+      return Results.Ok(new ExchangeLoginCodeResponse(true, data));
     }
 
     var errorResponse = new ExchangeLoginCodeResponse(false, null, result.Error, result.ErrorInfo);

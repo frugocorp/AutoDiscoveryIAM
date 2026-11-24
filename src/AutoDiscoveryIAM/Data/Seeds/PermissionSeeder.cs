@@ -37,6 +37,7 @@ internal static class PermissionSeeder
   [
     ("users.get_users", "Consultar usuarios", "Users"),
     ("users.get_user_by_public_id", "Consultar un usuario", "Users"),
+    ("users.create_user_by_admin", "Dar de alta usuarios", "Users"),
     ("users.update_user", "Actualizar usuario", "Users"),
     ("users.activation", "Aprobar, rechazar y reenviar la activación de usuarios", "Users"),
     ("users.create_user_roles", "Asignar rol a usuario", "Users"),

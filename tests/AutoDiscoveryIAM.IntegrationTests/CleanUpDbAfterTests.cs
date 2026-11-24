@@ -5,173 +5,90 @@
 // -----------------------------------------------------------------------
 
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data.Seeds;
 using Microsoft.EntityFrameworkCore;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests
 {
   /// <summary>
-  /// Limpieza best-effort de los datos de prueba dejados en una base de datos <b>real</b> por la
-  /// suite de integración (ver <see cref="CustomWebApplicationFactory{T}"/>, activado solo cuando
-  /// <c>USE_REAL_DB_FOR_TESTS=true</c>). Con la base InMemory por defecto no hace falta -- cada
-  /// corrida usa una base descartable, sin estado que arrastrar entre ejecuciones.
+  /// Limpieza de los datos que deja la suite de integración en una base de datos <b>real</b> (ver
+  /// <see cref="CustomWebApplicationFactory{T}"/>, activado solo cuando <c>USE_REAL_DB_FOR_TESTS=true</c>).
+  /// Con la base InMemory por defecto no hace falta: cada corrida usa una base descartable.
   /// </summary>
   /// <remarks>
-  /// Los patrones <c>LIKE</c> cubren los prefijos de usuario/rol/permiso que usan los distintos
-  /// tests de integración. Si agregas un test nuevo con un prefijo de dato de prueba nuevo,
-  /// agrégalo también aquí -- de lo contrario sus filas quedan huérfanas en la base real entre
-  /// corridas, acumulándose indefinidamente.
+  /// Usuarios y roles se limpian por <b>lista de conservación</b>: se borra todo lo que no sea del seed
+  /// (usuario de sistema, admin de bootstrap y usuarios de desarrollo de la librería; roles
+  /// <c>AdminAutoDiscoveryIAM</c> y <c>UserDefault</c>), sin importar el prefijo que use cada prueba.
+  /// Así una prueba nueva no puede dejar basura por olvidar registrar su prefijo. Sus relaciones
+  /// (roles asignados, refresh tokens, logins externos, solicitudes de cambio de email) se borran en
+  /// cascada. Los permisos sí van por prefijo: los que crea el sync son legítimos y no se distinguen
+  /// de otra forma.
   /// </remarks>
   internal static class CleanUpDbAfterTests
   {
+    /// <summary>
+    /// Usuarios del seed que se conservan (por <c>Username</c>, que las pruebas no cambian).
+    /// </summary>
+    internal static IReadOnlyList<string> SeedUsernames { get; } =
+    [
+      AutoDiscoveryIAMDbContext.SystemUsername,
+      UserSeeder.AdminBootstrapUser.Username,
+      .. DevUserSeeder.DevUsers.Select(u => u.Username),
+    ];
+
+    /// <summary>
+    /// Roles del seed que se conservan.
+    /// </summary>
+    internal static IReadOnlyList<string> SeedRoleNames { get; } =
+    [
+      RoleSeeder.AdminAutoDiscoveryIamRoleName,
+      RoleSeeder.UserDefaultRoleName,
+    ];
+
     public static void CleanupTestData(AutoDiscoveryIAMDbContext db)
     {
-      CleanupRefreshTokens(db);
-      CleanupExternalLogins(db);
-      CleanupEmailChangeRequests(db);
-      CleanupUserRolesByUserPatterns(db);
-      CleanupUserRolesByRolePatterns(db);
-      CleanupRolePermissionsByRolePatterns(db);
-      CleanupRolePermissionsByPermissionPatterns(db);
-      CleanupRoles(db);
-      CleanupPermissions(db);
-      CleanupUsers(db);
+      db.Database.ExecuteSqlRaw(CleanupSql.DeleteRefreshTokens);
+      db.Database.ExecuteSqlRaw(CleanupSql.DeleteExternalLoginExchangeCodes);
+      db.Database.ExecuteSqlRaw(CleanupSql.DeleteRolePermissionsByPermissions);
+      db.Database.ExecuteSqlRaw(CleanupSql.DeletePermissions);
+      DeleteAllExcept(db, "Roles", "Name", SeedRoleNames);
+      DeleteAllExcept(db, "Users", "Username", SeedUsernames);
     }
 
-    private static void CleanupUserRolesByUserPatterns(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteUserRolesByUsers);
+    /// <summary>
+    /// Falla si, después de la limpieza, queda algún usuario o rol fuera del seed: la limpieza no hizo
+    /// su trabajo y las pruebas correrían sobre datos de corridas anteriores.
+    /// </summary>
+    public static void EnsureOnlySeedDataRemains(AutoDiscoveryIAMDbContext db)
+    {
+      var leftoverUsers = db.Users.IgnoreQueryFilters()
+        .Where(u => !SeedUsernames.Contains(u.Username))
+        .Select(u => u.Username)
+        .Take(10)
+        .ToList();
+      var leftoverRoles = db.Roles.IgnoreQueryFilters()
+        .Where(r => !SeedRoleNames.Contains(r.Name))
+        .Select(r => r.Name)
+        .Take(10)
+        .ToList();
 
-    private static void CleanupUserRolesByRolePatterns(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteUserRolesByRoles);
+      if (leftoverUsers.Count > 0 || leftoverRoles.Count > 0)
+      {
+        throw new InvalidOperationException(
+          $"La limpieza de la base de pruebas dejó datos fuera del seed. Usuarios: [{string.Join(", ", leftoverUsers)}]. Roles: [{string.Join(", ", leftoverRoles)}].");
+      }
+    }
 
-    private static void CleanupRolePermissionsByRolePatterns(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteRolePermissionsByRoles);
-
-    private static void CleanupRolePermissionsByPermissionPatterns(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteRolePermissionsByPermissions);
-
-    private static void CleanupRoles(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteRoles);
-
-    private static void CleanupPermissions(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeletePermissions);
-
-    private static void CleanupUsers(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteUsers);
-
-    private static void CleanupRefreshTokens(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteRefreshTokens);
-
-    private static void CleanupExternalLogins(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteExternalLogins);
-
-    private static void CleanupEmailChangeRequests(AutoDiscoveryIAMDbContext db)
-      => db.Database.ExecuteSqlRaw(CleanupSql.DeleteEmailChangeRequests);
+    private static void DeleteAllExcept(AutoDiscoveryIAMDbContext db, string table, string column, IReadOnlyList<string> keep)
+    {
+      // Los nombres de tabla y columna son constantes de este archivo; los valores van como parámetros.
+      var placeholders = string.Join(", ", keep.Select((_, i) => $"{{{i}}}"));
+      var sql = $"DELETE FROM [{table}] WHERE [{column}] NOT IN ({placeholders});";
+      db.Database.ExecuteSqlRaw(sql, keep.Cast<object>().ToArray());
+    }
 
     private static class CleanupSql
     {
-      public const string DeleteUserRolesByUsers = @"
-        DELETE ur
-        FROM UserRoles ur
-        INNER JOIN Users u ON u.Id = ur.UserId
-        WHERE
-          u.Username LIKE 'integrationuser_%' OR
-          u.Username LIKE 'users-query-%' OR
-          u.Username LIKE 'assign-user-%' OR
-          u.Username LIKE 'test-user-%' OR
-          u.Username LIKE 'dryrun-user-%' OR
-          u.Username LIKE 'delete-user-roles-user-%' OR
-          u.Username LIKE 'missing-delete-user-role-user-%' OR
-          u.Username LIKE 'create-user-roles-user-%' OR
-          u.Username LIKE 'duplicate-user-role-user-%' OR
-          u.Username LIKE 'restore-user-role-user-%' OR
-          u.Username LIKE 'roles-query-user-%' OR
-          u.Username LIKE 'clear-hidden-user-%' OR
-          u.Username LIKE 'get-my-perms-%' OR
-          u.Username LIKE 'get-my-perms-user-%' OR
-          u.Username LIKE 'a04usr_%' OR
-          u.Username LIKE 'a04adm_%' OR
-          u.Username LIKE 'b02-role-user-%';";
-
-      public const string DeleteUserRolesByRoles = @"
-        DELETE ur
-        FROM UserRoles ur
-        INNER JOIN Roles r ON r.Id = ur.RoleId
-        WHERE
-          r.Name LIKE 'test-role-%' OR
-          r.Name LIKE 'target-role-%' OR
-          r.Name LIKE 'dryrun-role-%' OR
-          r.Name LIKE 'delete-user-roles-role-%' OR
-          r.Name LIKE 'missing-delete-user-role-role-%' OR
-          r.Name LIKE 'create-user-roles-role-%' OR
-          r.Name LIKE 'duplicate-user-role-role-%' OR
-          r.Name LIKE 'missing-user-role-%' OR
-          r.Name LIKE 'restore-user-role-role-%' OR
-          r.Name LIKE 'bulk-role-permissions-role-%' OR
-          r.Name LIKE 'bulk-role-permissions-dryrun-role-%' OR
-          r.Name LIKE 'delete-role-permission-role-%' OR
-          r.Name LIKE 'missing-delete-role-permission-role-%' OR
-          r.Name LIKE 'create-role-permission-role-%' OR
-          r.Name LIKE 'missing-permission-role-%' OR
-          r.Name LIKE 'users-query-role-%' OR
-          r.Name LIKE 'users-query-perm-role-%' OR
-          r.Name LIKE 'permissions-query-role-%' OR
-          r.Name LIKE 'permissions-query-users-role-%' OR
-          r.Name LIKE 'roles-query-user-role-%' OR
-          r.Name LIKE 'roles-query-perm-role-%' OR
-          r.Name LIKE 'roles-query-inactive-%' OR
-          r.Name LIKE 'clear-hidden-role-%' OR
-          r.Name LIKE 'get-my-perms-role-%' OR
-          r.Name LIKE 'b02-role-users-%' OR
-          r.Name LIKE 'b02-role-perms-%' OR
-          r.Name LIKE 'role-old-%' OR
-          r.Name LIKE 'role-new-%' OR
-          r.Name LIKE 'query-role-%' OR
-          r.Name LIKE 'a03-updated-%' OR
-          r.Name LIKE 'a03-res-%' OR
-          r.Name LIKE 'a03-del-%' OR
-          r.Name LIKE 'a03-role-%' OR
-          r.Name LIKE 'a03-concurrency-%';";
-
-      public const string DeleteRolePermissionsByRoles = @"
-        DELETE rp
-        FROM RolePermissions rp
-        INNER JOIN Roles r ON r.Id = rp.RoleId
-        WHERE
-          r.Name LIKE 'test-role-%' OR
-          r.Name LIKE 'target-role-%' OR
-          r.Name LIKE 'dryrun-role-%' OR
-          r.Name LIKE 'delete-user-roles-role-%' OR
-          r.Name LIKE 'missing-delete-user-role-role-%' OR
-          r.Name LIKE 'create-user-roles-role-%' OR
-          r.Name LIKE 'duplicate-user-role-role-%' OR
-          r.Name LIKE 'missing-user-role-%' OR
-          r.Name LIKE 'restore-user-role-role-%' OR
-          r.Name LIKE 'bulk-role-permissions-role-%' OR
-          r.Name LIKE 'bulk-role-permissions-dryrun-role-%' OR
-          r.Name LIKE 'delete-role-permission-role-%' OR
-          r.Name LIKE 'missing-delete-role-permission-role-%' OR
-          r.Name LIKE 'create-role-permission-role-%' OR
-          r.Name LIKE 'missing-permission-role-%' OR
-          r.Name LIKE 'users-query-role-%' OR
-          r.Name LIKE 'users-query-perm-role-%' OR
-          r.Name LIKE 'permissions-query-role-%' OR
-          r.Name LIKE 'permissions-query-users-role-%' OR
-          r.Name LIKE 'roles-query-user-role-%' OR
-          r.Name LIKE 'roles-query-perm-role-%' OR
-          r.Name LIKE 'roles-query-inactive-%' OR
-          r.Name LIKE 'clear-hidden-role-%' OR
-          r.Name LIKE 'get-my-perms-role-%' OR
-          r.Name LIKE 'b02-role-users-%' OR
-          r.Name LIKE 'b02-role-perms-%' OR
-          r.Name LIKE 'role-old-%' OR
-          r.Name LIKE 'role-new-%' OR
-          r.Name LIKE 'query-role-%' OR
-          r.Name LIKE 'a03-updated-%' OR
-          r.Name LIKE 'a03-res-%' OR
-          r.Name LIKE 'a03-del-%' OR
-          r.Name LIKE 'a03-role-%' OR
-          r.Name LIKE 'a03-concurrency-%';";
-
       public const string DeleteRolePermissionsByPermissions = @"
         DELETE rp
         FROM RolePermissions rp
@@ -183,51 +100,15 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests
           p.[Key] LIKE 'roles.delete_permission_%' OR
           p.[Key] LIKE 'roles.missing_delete_permission_%' OR
           p.[Key] LIKE 'roles.query.permissions.%' OR
+          p.[Key] LIKE 'users.query.permissions.%' OR
           p.[Key] LIKE 'permissions.query.roles.%' OR
+          p.[Key] LIKE 'permissions.query.users.%' OR
           p.[Key] LIKE 'permissions.query.inactive.%' OR
           p.[Key] LIKE 'clear.hidden.permission.%' OR
           p.[Key] LIKE 'users.read_me_permissions_%' OR
           p.[Key] LIKE 'b02.role.perms.%' OR
           p.[Key] LIKE 'perm.a.%' OR
           p.[Key] LIKE 'perm.b.%';";
-
-      public const string DeleteRoles = @"
-        DELETE FROM Roles
-        WHERE
-          Name LIKE 'test-role-%' OR
-          Name LIKE 'target-role-%' OR
-          Name LIKE 'dryrun-role-%' OR
-          Name LIKE 'delete-user-roles-role-%' OR
-          Name LIKE 'missing-delete-user-role-role-%' OR
-          Name LIKE 'create-user-roles-role-%' OR
-          Name LIKE 'duplicate-user-role-role-%' OR
-          Name LIKE 'missing-user-role-%' OR
-          Name LIKE 'restore-user-role-role-%' OR
-          Name LIKE 'bulk-role-permissions-role-%' OR
-          Name LIKE 'bulk-role-permissions-dryrun-role-%' OR
-          Name LIKE 'delete-role-permission-role-%' OR
-          Name LIKE 'missing-delete-role-permission-role-%' OR
-          Name LIKE 'create-role-permission-role-%' OR
-          Name LIKE 'missing-permission-role-%' OR
-          Name LIKE 'users-query-role-%' OR
-          Name LIKE 'users-query-perm-role-%' OR
-          Name LIKE 'permissions-query-role-%' OR
-          Name LIKE 'permissions-query-users-role-%' OR
-          Name LIKE 'roles-query-user-role-%' OR
-          Name LIKE 'roles-query-perm-role-%' OR
-          Name LIKE 'roles-query-inactive-%' OR
-          Name LIKE 'clear-hidden-role-%' OR
-          Name LIKE 'get-my-perms-role-%' OR
-          Name LIKE 'b02-role-users-%' OR
-          Name LIKE 'b02-role-perms-%' OR
-          Name LIKE 'role-old-%' OR
-          Name LIKE 'role-new-%' OR
-          Name LIKE 'query-role-%' OR
-          Name LIKE 'a03-updated-%' OR
-          Name LIKE 'a03-res-%' OR
-          Name LIKE 'a03-del-%' OR
-          Name LIKE 'a03-role-%' OR
-          Name LIKE 'a03-concurrency-%';";
 
       public const string DeletePermissions = @"
         DELETE FROM Permissions
@@ -248,70 +129,11 @@ namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests
           [Key] LIKE 'perm.a.%' OR
           [Key] LIKE 'perm.b.%';";
 
-      public const string DeleteUsers = @"
-        DELETE FROM Users
-        WHERE
-          Username LIKE 'integrationuser_%' OR
-          Username LIKE 'users-query-%' OR
-          Username LIKE 'assign-user-%' OR
-          Username LIKE 'test-user-%' OR
-          Username LIKE 'dryrun-user-%' OR
-          Username LIKE 'delete-user-roles-user-%' OR
-          Username LIKE 'missing-delete-user-role-user-%' OR
-          Username LIKE 'create-user-roles-user-%' OR
-          Username LIKE 'duplicate-user-role-user-%' OR
-          Username LIKE 'restore-user-role-user-%' OR
-          Username LIKE 'roles-query-user-%' OR
-          Username LIKE 'permissions-query-user-%' OR
-          Username LIKE 'query-user-%' OR
-          Username LIKE 'clear-hidden-user-%' OR
-          Username LIKE 'get-my-perms-%' OR
-          Username LIKE 'get-my-perms-user-%' OR
-          Username LIKE 'a04usr_%' OR
-          Username LIKE 'a04adm_%' OR
-          Username LIKE 'b02-role-user-%' OR
-          Username LIKE 'activation_%' OR
-          Username LIKE 'google_int_%' OR
-          Username LIKE 'pwd-mgmt-%' OR
-          Username LIKE 'twofa-%' OR
-          Username LIKE 'verify2fa-%' OR
-          Username LIKE 'flow-%' OR
-          Username LIKE 'concurrency-%' OR
-          Username LIKE 'myprofile-%' OR
-          Username LIKE 'canary_%' OR
-          Username LIKE 'canary_admin_%' OR
-          Username LIKE 'enum-timing-%' OR
-          Username LIKE '2fa-lockout-%' OR
-          Email LIKE 'activation-%@example.com' OR
-          Email LIKE '%-google-test@example.com' OR
-          Email LIKE 'change-pwd-%@example.com' OR
-          Email LIKE 'reset-%@example.com' OR
-          Email LIKE 'twofa-%@example.com' OR
-          Email LIKE 'verify2fa-%@example.com' OR
-          Email LIKE 'canary_%@example.com' OR
-          Email LIKE 'canary_admin_%@example.com' OR
-          Email LIKE 'enum-timing-%@example.com' OR
-          Email LIKE 'does-not-exist-%@example.com' OR
-          Email LIKE '2fa-lockout-%@example.com';";
-
-      public const string DeleteExternalLogins = @"
-        DELETE el
-        FROM ExternalLogins el
-        LEFT JOIN Users u ON u.Id = el.UserId
-        WHERE
-          u.Username LIKE 'google_int_%' OR
-          u.Email LIKE '%-google-test@example.com';";
-
-      public const string DeleteEmailChangeRequests = @"
-        DELETE ecr
-        FROM EmailChangeRequests ecr
-        INNER JOIN Users u ON u.Id = ecr.UserId
-        WHERE
-          u.Username LIKE 'flow-%' OR
-          u.Username LIKE 'concurrency-%';";
-
       public const string DeleteRefreshTokens = @"
         DELETE FROM RefreshTokens;";
+
+      public const string DeleteExternalLoginExchangeCodes = @"
+        DELETE FROM ExternalLoginExchangeCodes;";
     }
   }
 }

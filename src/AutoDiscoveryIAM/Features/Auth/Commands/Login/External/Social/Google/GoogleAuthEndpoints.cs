@@ -8,6 +8,7 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login.External.Contracts;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login.External.Social.Google.Docs;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshToken;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Auth;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 using Microsoft.Extensions.Options;
@@ -47,11 +48,12 @@ public static class GoogleAuthEndpoints
         .WithName("GoogleCallback")
         .WithTags("Auth")
         .WithSummary("Procesa el callback OAuth de Google.")
-        .WithDescription("Valida el code y el state devueltos por Google, vincula o crea el usuario correspondiente y emite un JWT propio si la cuenta esta activa. Si Authentication:ExternalLoginRedirectUri esta configurado, en vez de responder JSON redirige (302) a esa URL -- en exito con un codigo de un solo uso (#code=...) que la SPA canjea en POST /auth/external-login/exchange, en error con el detalle en el fragmento (#error=...&errorDescription=...); si no esta configurado, responde JSON directo (default, compatible con versiones anteriores).")
+        .WithDescription("Valida el code y el state devueltos por Google, vincula o crea el usuario correspondiente y emite un JWT propio si la cuenta esta activa. Si el correo no tiene cuenta y Registration:ExternalProviders:Google es false, no la crea y responde 403 (REGISTRATION_DISABLED). Si Authentication:ExternalLoginRedirectUri esta configurado, en vez de responder JSON redirige (302) a esa URL -- en exito con un codigo de un solo uso (#code=...) que la SPA canjea en POST /auth/external-login/exchange, en error con el detalle en el fragmento (#error=...&errorDescription=...); si no esta configurado, responde JSON directo (default, compatible con versiones anteriores).")
         .Produces<LoginResponse>(StatusCodes.Status200OK, "application/json")
         .Produces(StatusCodes.Status302Found)
         .Produces<ApiResponse<object>>(ErrorInfo.Status400Validation.StatusCode, "application/json")
         .Produces<ApiResponse<object>>(ErrorInfo.Status401Unauthorized.StatusCode, "application/json")
+        .Produces<ApiResponse<object>>(ErrorInfo.RegistrationDisabled.StatusCode, "application/json")
         .Produces<ApiResponse<object>>(ErrorInfo.Status424Dependency.StatusCode, "application/json")
         .WithMetadata(
           new PermissionsNotRequiredAttribute("Autenticación social - callback sin permisos"),
@@ -124,6 +126,7 @@ public static class GoogleAuthEndpoints
       ExternalLoginOrchestrator orchestrator,
       IExternalLoginExchangeCodeRepository exchangeCodeRepository,
       IOptions<ExternalLoginSettings> externalLoginSettings,
+      IRefreshTokenDelivery refreshTokenDelivery,
       CancellationToken cancellationToken)
     {
         var settings = externalLoginSettings.Value;
@@ -146,7 +149,9 @@ public static class GoogleAuthEndpoints
             return BuildErrorResult(result.Error, result.ErrorInfo, StatusCodes.Status500InternalServerError, settings);
         }
 
-        return await BuildSuccessResultAsync(result.Data!, settings, exchangeCodeRepository, cancellationToken);
+        return string.IsNullOrWhiteSpace(settings.ExternalLoginRedirectUri)
+          ? Results.Ok(new LoginResponse(true, result.Data! with { RefreshToken = refreshTokenDelivery.Deliver(context, result.Data!.RefreshToken) }))
+          : await BuildSuccessResultAsync(result.Data!, settings, exchangeCodeRepository, cancellationToken);
     }
 
     private static IResult? ValidateCallbackRequest(HttpContext context, string? code, string? state, string? error, ExternalLoginSettings settings)

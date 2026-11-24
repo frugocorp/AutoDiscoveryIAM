@@ -7,6 +7,7 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.TwoFactor;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.TwoFactor.VerifyTwoFactor;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services.AuthContext;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Services.TwoFactorStepUp;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth;
 
@@ -29,6 +30,9 @@ public static class AuthDI
 
     // Servicios de contexto de autenticación
     services.AddScoped<IAuthContextService, AuthContextService>();
+
+    // Verificación step-up con el Authenticator, para las acciones sensibles de la app consumidora
+    services.AddScoped<ITwoFactorStepUpService, TwoFactorStepUpService>();
 
     return services;
   }

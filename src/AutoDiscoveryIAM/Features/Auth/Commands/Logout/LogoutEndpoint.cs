@@ -9,6 +9,7 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Logout.Docs;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshToken;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,6 +40,7 @@ public static class LogoutEndpoint
     LogoutRequestDto requestDto,
     LogoutHandler handler,
     LogoutCommandValidator validator,
+    IRefreshTokenDelivery refreshTokenDelivery,
     HttpContext context,
     CancellationToken cancellationToken)
   {
@@ -57,6 +59,10 @@ public static class LogoutEndpoint
 
     // Convertir DTO a Command
     var command = requestDto.ToCommand(context, userId);
+    if (string.IsNullOrEmpty(command.RefreshToken))
+    {
+      command = command with { RefreshToken = refreshTokenDelivery.ReadFromCookie(context) };
+    }
 
     // Validar comando
     var validation = await validator.ValidateAsync(command, cancellationToken);
@@ -73,6 +79,7 @@ public static class LogoutEndpoint
 
     if (result.Success)
     {
+      refreshTokenDelivery.Clear(context);
       var response = new LogoutResponse(true, result.Data);
       return Results.Ok(response);
     }

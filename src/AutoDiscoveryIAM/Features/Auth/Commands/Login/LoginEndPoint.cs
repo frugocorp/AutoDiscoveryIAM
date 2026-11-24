@@ -6,6 +6,7 @@
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login.Docs;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.RefreshToken;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Auth.Commands.Login;
@@ -21,6 +22,7 @@ public static class LoginEndPoint
       LoginRequestDto requestDto,
       LoginHandler handler,
       LoginCommandValidator validator,
+      IRefreshTokenDelivery refreshTokenDelivery,
       HttpContext context,
       CancellationToken cancellationToken) =>
     {
@@ -39,7 +41,8 @@ public static class LoginEndPoint
       var result = await handler.Handle(command, cancellationToken);
       if (result.Success)
       {
-        var response = new LoginResponse(true, result.Data);
+        var data = result.Data! with { RefreshToken = refreshTokenDelivery.Deliver(context, result.Data!.RefreshToken) };
+        var response = new LoginResponse(true, data);
         return Results.Ok(response);
       }
       else

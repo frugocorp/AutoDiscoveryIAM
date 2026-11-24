@@ -50,9 +50,9 @@
        espanol por convencion del proyecto; ver README.md para el detalle completo en espanol. -->
   <PropertyGroup>
     <PackageId>FrugoCorp.AspNetCore.AutoDiscoveryIAM</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <Description>Dynamic RBAC and JWT authentication for ASP.NET Core, with permissions auto-discovered from your real endpoints via EndpointDataSource: no manual permission maps to keep in sync. Includes refresh token rotation with reuse detection, 2FA (TOTP/email), Google social login, full account lifecycle (registration, activation, password reset, lockout), rate limiting, and native OpenAPI docs. Built with Vertical Slice Architecture on minimal APIs, no MVC, no MediatR.</Description>
-    <PackageReleaseNotes>0.1.1: the "Project website" link on NuGet.org now points to the documentation site (https://autodiscoveryiam.frugocorp.com); the GitHub repository stays linked as "Source repository". No code changes. Full history: https://github.com/frugocorp/AutoDiscoveryIAM/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageReleaseNotes>0.2.0: admin user creation (POST /users/by-admin, with invitation or forced password change) and IUserProvisioningService to create users from your own code together with your linked entity; per-method registration switches and optional admin approval; default role for every new user; refresh token in an HttpOnly cookie and an optional reuse grace window; ITwoFactorStepUpService to verify an Authenticator code before sensitive actions; permission sync from code; security fixes around email verification and refresh. Includes breaking changes and one schema change (Users.MustChangePassword): read the Breaking section before upgrading. Full history: https://github.com/frugocorp/AutoDiscoveryIAM/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- "Project website" en nuget.org: el sitio de documentacion. El enlace al codigo ya lo da
@@ -67,8 +67,10 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <!-- Validacion de paquete del SDK: revisa la coherencia del .nupkg en cada pack y, con la version
          base, falla si un cambio rompe la API publica respecto a esa version ya publicada (la descarga
-         de NuGet.org). Mientras la version sea 0.y.z se permiten cambios incompatibles: si uno es
-         intencional, se sube la version MINOR y se mueve esta base a la ultima version publicada. -->
+         de NuGet.org). Una ruptura intencional se declara en CompatibilitySuppressions.xml
+         (dotnet pack -p:ApiCompatGenerateSuppressionFile=true) y se anuncia en la seccion Breaking del
+         CHANGELOG; mientras la version sea 0.y.z eso exige subir la version MINOR. Al publicar, esta
+         base pasa a la version recien publicada y el archivo de supresiones se vacia. -->
     <EnablePackageValidation>true</EnablePackageValidation>
     <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
     <!-- Simbolos (.snupkg, se publican a la vez en NuGet.org) + SourceLink (incluido en el SDK): quien

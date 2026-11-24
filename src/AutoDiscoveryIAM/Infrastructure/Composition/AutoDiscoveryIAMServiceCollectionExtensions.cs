@@ -109,6 +109,7 @@ public static class AutoDiscoveryIAMServiceCollectionExtensions
     services.Configure<ExternalLoginSettings>(configuration.GetSection("Authentication"));
     services.Configure<MailSettings>(configuration.GetSection("Mail"));
     services.Configure<ActivationSettings>(configuration.GetSection("Activation"));
+    services.Configure<RegistrationSettings>(configuration.GetSection(RegistrationSettings.SectionName));
     services.Configure<PasswordResetSettings>(configuration.GetSection("PasswordReset"));
     services.AddOptions<LockoutSettings>().Bind(configuration.GetSection("Lockout")).ValidateOnStart();
     services.AddSingleton<IValidateOptions<LockoutSettings>, LockoutSettingsValidator>();
@@ -304,6 +305,9 @@ public static class AutoDiscoveryIAMServiceCollectionExtensions
   {
     // Los orígenes permitidos se leen de configuración (Cors:AllowedOrigins), nunca AllowAnyOrigin.
     var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    // Con el refresh token en cookie, el navegador solo la manda a otro origen si CORS permite
+    // credenciales. Es seguro porque los orígenes siempre son explícitos.
+    var refreshTokenInCookie = configuration.GetValue("RefreshTokenSettings:Delivery", RefreshTokenDeliveryMode.Body) != RefreshTokenDeliveryMode.Body;
     services.AddCors(options =>
     {
       options.AddPolicy(
@@ -313,6 +317,10 @@ public static class AutoDiscoveryIAMServiceCollectionExtensions
             policyBuilder.WithOrigins(allowedOrigins)
                            .AllowAnyMethod()
                            .AllowAnyHeader();
+            if (refreshTokenInCookie)
+            {
+              policyBuilder.AllowCredentials();
+            }
           });
     });
   }

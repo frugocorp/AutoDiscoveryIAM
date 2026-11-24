@@ -92,6 +92,21 @@ internal sealed class RefreshTokenSettingsValidator : IValidateOptions<RefreshTo
       errors.Add($"RefreshTokenSettings:ExpiryDays debe ser al menos 1 (tiene {options.ExpiryDays}).");
     }
 
+    if (options.ReuseGracePeriodSeconds is < 0 or > RefreshTokenSettings.MaxReuseGracePeriodSeconds)
+    {
+      errors.Add($"RefreshTokenSettings:ReuseGracePeriodSeconds debe estar entre 0 y {RefreshTokenSettings.MaxReuseGracePeriodSeconds} (tiene {options.ReuseGracePeriodSeconds}).");
+    }
+
+    if (string.IsNullOrWhiteSpace(options.Cookie.Name))
+    {
+      errors.Add("RefreshTokenSettings:Cookie:Name no puede quedar vacío.");
+    }
+
+    if (string.IsNullOrWhiteSpace(options.Cookie.Path) || !options.Cookie.Path.StartsWith('/'))
+    {
+      errors.Add($"RefreshTokenSettings:Cookie:Path debe empezar con '/' (tiene '{options.Cookie.Path}').");
+    }
+
     return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
   }
 }

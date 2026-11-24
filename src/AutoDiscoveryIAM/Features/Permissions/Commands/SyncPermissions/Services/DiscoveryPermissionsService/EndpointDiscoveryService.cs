@@ -7,6 +7,7 @@
 using System.Reflection;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Permissions.Commands.SyncPermissions.Services;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Permissions.Models.Dtos;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Permissions.Models.Entities;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Permissions.Services.PermissionNaming;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Infrastructure.Middleware.Authorization;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -46,7 +47,7 @@ public class EndpointDiscoveryService : IEndpointDiscoveryService
     try
     {
       // Obtener acceso al EndpointDataSource para acceder a endpoints registrados
-      var endpointDataSource = _serviceProvider.GetService<EndpointDataSource>();
+      var endpointDataSource = ResolveEndpointDataSource();
       if (endpointDataSource == null)
       {
         return permissions;
@@ -72,10 +73,18 @@ public class EndpointDiscoveryService : IEndpointDiscoveryService
     return MergeRoutesSharingKey(permissions);
   }
 
+  /// <summary>
+  /// La tabla de rutas del sync: la que fijó el sync desde código para este scope, o la del contenedor.
+  /// </summary>
+  private EndpointDataSource? ResolveEndpointDataSource()
+  {
+    return _serviceProvider.GetService<SyncEndpointSource>()?.Resolve() ?? _serviceProvider.GetService<EndpointDataSource>();
+  }
+
   /// <inheritdoc />
   public IList<string> FindEndpointsWithoutPermission()
   {
-    var endpointDataSource = _serviceProvider.GetService<EndpointDataSource>();
+    var endpointDataSource = ResolveEndpointDataSource();
     if (endpointDataSource == null)
     {
       return [];
@@ -202,6 +211,16 @@ public class EndpointDiscoveryService : IEndpointDiscoveryService
   /// <summary>
   /// Construye el <see cref="PermissionDescriptor"/> final a partir de las piezas ya resueltas.
   /// </summary>
+  /// <summary>
+  /// La descripción sale del <c>.WithDescription()</c> del endpoint, que no tiene límite: se recorta al
+  /// largo de la columna para que una descripción larga (de la librería o de tu app) nunca haga fallar
+  /// el sync al guardar.
+  /// </summary>
+  private static string? FitDescription(string? description)
+    => description is { Length: > PermissionConfiguration.DescriptionMaxLength }
+      ? string.Concat(description.AsSpan(0, PermissionConfiguration.DescriptionMaxLength - 1), "…")
+      : description;
+
   private static PermissionDescriptor BuildDescriptor(
       PermissionNamingResultDto namingResult,
       Type endpointType,
@@ -221,7 +240,7 @@ public class EndpointDiscoveryService : IEndpointDiscoveryService
       Feature = namingResult.Feature,
       CqrsType = namingResult.CqrsType,
       Action = namingResult.ActionSnakeCase,
-      Description = description,
+      Description = FitDescription(description),
       SourceFilePath = string.Empty, // No disponible desde metadatos en runtime
       EndpointMethodName = endpointType.Name,
       SourceNamespace = endpointType.Namespace ?? string.Empty,

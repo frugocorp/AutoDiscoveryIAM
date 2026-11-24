@@ -26,6 +26,6 @@ public class ExternalLoginSessionService(
         var refreshTokenEntity = _refreshTokenService.GenerateRefreshToken(user, ipAddress, userAgent);
         await _refreshTokenRepository.CreateAsync(refreshTokenEntity, cancellationToken);
 
-        return new LoginResponseDto(tokenString, expiresAt, refreshTokenEntity.PlaintextToken!);
+        return new LoginResponseDto(tokenString, expiresAt, refreshTokenEntity.PlaintextToken!, PasswordChangeRequired: user.MustChangePassword);
     }
 }

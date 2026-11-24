@@ -385,5 +385,11 @@ public class PasswordManagementIntegrationTests(CustomWebApplicationFactory<Prog
       SentTokens[user.Email] = token;
       return Task.FromResult(OperationResult.Ok(true));
     }
+
+    public Task<OperationResult<bool>> SendPasswordSetupEmailAsync(User user, string token, CancellationToken cancellationToken, bool fakeMail = false)
+    {
+      SentTokens[user.Email] = token;
+      return Task.FromResult(OperationResult.Ok(true));
+    }
   }
 }

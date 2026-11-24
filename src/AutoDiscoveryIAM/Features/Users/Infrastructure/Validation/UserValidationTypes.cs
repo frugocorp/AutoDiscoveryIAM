@@ -25,6 +25,10 @@ public static class UserValidationTypes
     PhoneNumberMaxLength,
     StatusRequired,
     StatusInvalid,
+
+    // Los valores nuevos van siempre al final: insertarlos a la mitad cambia el número de los
+    // siguientes y rompe a quien guarde o compare el valor numérico.
+    MustChangePasswordRequiresPassword,
   }
 
   public class ValidationType
@@ -70,6 +74,7 @@ public static class UserValidationTypes
   public static ValidationType PasswordMaxLength => new("PASSWORD_MAX_LENGTH", "La contraseña no puede exceder los {0} caracteres.", 256);
   public static ValidationType CurrentPasswordInvalid => new("CURRENT_PASSWORD_INVALID", "La contraseña actual es incorrecta.");
   public static ValidationType ResetTokenRequired => new("RESET_TOKEN_REQUIRED", "El token de reseteo es obligatorio.");
+  public static ValidationType MustChangePasswordRequiresPassword => new("MUST_CHANGE_PASSWORD_REQUIRES_PASSWORD", "mustChangePassword solo aplica cuando el administrador define una contraseña inicial.");
 
   public static ValidationType IdRequired => new("ID_REQUIRED", "El Id del usuario es requerido.");
   public static ValidationType IdGreaterThanZero => new("ID_GREATER_THAN_ZERO", "El Id del usuario debe ser mayor a {0}.", 0);
@@ -79,8 +84,8 @@ public static class UserValidationTypes
   public static ValidationType PhoneNumberMaxLength => new("PHONE_NUMBER_MAX_LENGTH", "El número de teléfono no puede exceder los {0} caracteres.", 20);
 
   public static ValidationType StatusRequired => new("STATUS_REQUIRED", "El estado es obligatorio.");
-  public static ValidationType StatusInvalid => new("STATUS_INVALID", "El estado es inválido. Valores permitidos: active, inactive, blocked, suspended, pending.");
-  public static readonly string[] StatusAllowedValues = new[] { "active", "inactive", "blocked", "suspended", "pending" };
+  public static ValidationType StatusInvalid => new("STATUS_INVALID", "El estado es inválido. Valores permitidos: active, inactive, blocked, suspended, pending, pending_approval.");
+  public static readonly string[] StatusAllowedValues = new[] { "active", "inactive", "blocked", "suspended", "pending", "pending_approval" };
 
   // Diccionario para acceso por clave
   private static readonly Dictionary<ValidationKey, ValidationType> _dict = new()
@@ -99,6 +104,7 @@ public static class UserValidationTypes
         { ValidationKey.PasswordMaxLength, PasswordMaxLength },
         { ValidationKey.CurrentPasswordInvalid, CurrentPasswordInvalid },
         { ValidationKey.ResetTokenRequired, ResetTokenRequired },
+        { ValidationKey.MustChangePasswordRequiresPassword, MustChangePasswordRequiresPassword },
         { ValidationKey.IdRequired, IdRequired },
         { ValidationKey.IdGreaterThanZero, IdGreaterThanZero },
         { ValidationKey.PublicIdRequired, PublicIdRequired },

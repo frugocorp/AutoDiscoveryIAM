@@ -11,12 +11,12 @@ Necesitas Node 22 o superior, `dotnet-ef` y un SQL Server alcanzable. Todos los 
 
 ```powershell
 Copy-Item MiApi/example.appsettings.Development.json MiApi/appsettings.Development.json   # complétalo
-dotnet pack ../../src/AutoDiscoveryIAM -c Release -p:Version=0.1.0-local.1 -o feed
-$env:AdiamVersion = "0.1.0-local.1"        # la versión que acabas de empaquetar
+dotnet pack ../../src/AutoDiscoveryIAM -c Release -p:Version=0.2.0-local.1 -o feed
+$env:AdiamVersion = "0.2.0-local.1"        # la versión que acabas de empaquetar
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 ```
 
-Usa una versión única en cada empaquetado (`0.1.0-local.2`, `0.1.0-local.3`...); así NuGet nunca toma una copia vieja de su caché. `AdiamVersion` va como **variable de entorno** a propósito: MSBuild la lee como propiedad, y así sirve igual para `dotnet ef` (donde `-p` significa `--project`) y para `dotnet run`. Sin ella se intenta restaurar la versión por defecto de `Directory.Build.props` y `dotnet ef` falla con "Unable to retrieve project metadata".
+Usa una versión única en cada empaquetado (`0.2.0-local.2`, `0.2.0-local.3`...); así NuGet nunca toma una copia vieja de su caché. `AdiamVersion` va como **variable de entorno** a propósito: MSBuild la lee como propiedad, y así sirve igual para `dotnet ef` (donde `-p` significa `--project`) y para `dotnet run`. Sin ella se intenta restaurar la versión por defecto de `Directory.Build.props` y `dotnet ef` falla con "Unable to retrieve project metadata".
 
 ## 2. Instalación nueva
 

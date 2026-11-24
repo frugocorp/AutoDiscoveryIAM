@@ -8,10 +8,8 @@ using System.Net;
 using System.Net.Http.Json;
 using AwesomeAssertions;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.ApiResponse;
-using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.Pagination;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetUserByPublicId;
-using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetUsers;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Helpers;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.IntegrationTests.Features.Authorization.RbacSecurity;
@@ -79,14 +77,12 @@ public class SensitiveFlagMassAssignmentTests(CustomWebApplicationFactory<Progra
 
         var regularUser = TestUsersHelper.GetUserByType(UserType.Regular);
         await _client.AuthenticateUserAsync(UserType.SuAdmin, CancellationToken.None);
-        // pageSize al maximo permitido (PaginationDefaults.MaxPageSize) a proposito: con la base de
-        // test real, otros tests dejan usuarios desechables entre corridas (limpiados best-effort)
-        // que pueden empujar a "user@example.com" fuera de la primera pagina por defecto -- este
-        // test no depende de que esa limpieza sea perfecta.
-        var usersResponse = await _client.GetAsync("/users?pageNumber=1&pageSize=100", CancellationToken.None);
-        var usersPayload = await usersResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResultDto<GetUsersResponseDto>>>(cancellationToken: CancellationToken.None);
-
-        var updatedUser = usersPayload!.Data!.Items.Single(u => u.Email == regularUser.Email);
+        // El PublicId se toma de la base: buscarlo en la primera página del listado falla cuando otras
+        // pruebas dejan usuarios que empujan a "user@example.com" fuera de ella. Las flags se leen por la API.
+        var regularPublicId = await TestDataLookup.GetUserPublicIdByEmailAsync(factory.Services, regularUser.Email!);
+        var userResponse = await _client.GetAsync($"/users/{regularPublicId}", CancellationToken.None);
+        userResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updatedUser = (await userResponse.Content.ReadFromJsonAsync<ApiResponse<GetUserByPublicIdResponseDto>>(cancellationToken: CancellationToken.None))!.Data!;
 
         updatedUser.IsAdmin.Should().BeFalse("UpdateMyProfileRequestDto no expone este campo -- el body extra debe ser ignorado");
         updatedUser.IsDevelopment.Should().BeFalse("UpdateMyProfileRequestDto no expone este campo -- el body extra debe ser ignorado");

@@ -13,6 +13,9 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Data.UoW;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Common.Security;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Logging;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.DefaultRole;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Infrastructure.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.UnitTests.Features.Users.Commands.CreateUser;
 
@@ -36,7 +39,7 @@ public class CreateUserHandlerTests
 
     mockRepo.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand("testuser", "test@example.com", "TestPass123*");
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -73,7 +76,7 @@ public class CreateUserHandlerTests
       .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(OperationResult.Ok(true)));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand(username, email, "Pass123*");
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -117,7 +120,7 @@ public class CreateUserHandlerTests
       .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(OperationResult.Ok(true)));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand("testuser", "test@example.com", password);
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -148,7 +151,7 @@ public class CreateUserHandlerTests
     mockUnitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>())
         .Returns(Task.FromException<int>(new InvalidOperationException("Database error")));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand("testuser", "test@example.com", "TestPass123*");
 
     var exception = (await ((Func<Task>)(() => handler.Handle(command, CancellationToken.None)))
@@ -180,7 +183,7 @@ public class CreateUserHandlerTests
       .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(OperationResult.Ok(true)));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand(username, email, "TestPass123*");
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -222,7 +225,7 @@ public class CreateUserHandlerTests
     mockRepo.CreateUser(Arg.Do<User>(u => u.PublicId = expectedPublicId))
         .Returns(callInfo => Task.FromResult(callInfo.Arg<User>()));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand("secuser", "sec@example.com", "SecPass123*");
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -253,7 +256,7 @@ public class CreateUserHandlerTests
       .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(OperationResult.Fail<bool>(ErrorInfo.Status424Dependency, "smtp error")));
 
-    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService);
+    var handler = new CreateUserHandler(mockRepo, mockLogger, mockUnitOfWork, mockPasswordHasher, mockActivationService, mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), Options.Create(new RegistrationSettings()));
     var command = new CreateUserCommand("mailfail", "mailfail@example.com", "SecPass123*");
 
     var result = await handler.Handle(command, CancellationToken.None);
@@ -261,5 +264,77 @@ public class CreateUserHandlerTests
     result.Success.Should().BeFalse();
     result.ErrorInfo.Should().BeEquivalentTo(ErrorInfo.Status424Dependency);
     await mockUnitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+  }
+
+  [Fact(DisplayName = "Handle asigna el rol por defecto al usuario nuevo antes de guardar")]
+  public async Task Handle_NewUser_AssignsDefaultRoleBeforeSaving()
+  {
+    var mockRepo = Substitute.For<ICreateUserRepository>();
+    var mockUnitOfWork = Substitute.For<IAutoDiscoveryIAMUnitOfWork>();
+    var mockPasswordHasher = Substitute.For<IPasswordHasher>();
+    var mockActivationEmailService = Substitute.For<IActivationEmailService>();
+    var mockDefaultRole = Substitute.For<IDefaultRoleAssignmentService>();
+
+    mockRepo.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+    mockPasswordHasher.HashPassword(Arg.Any<string>()).Returns("hashed");
+    mockActivationEmailService
+      .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(OperationResult.Ok(true)));
+
+    var handler = new CreateUserHandler(mockRepo, Substitute.For<IUserLogger>(), mockUnitOfWork, mockPasswordHasher, Substitute.For<IActivationService>(), mockActivationEmailService, mockDefaultRole, Options.Create(new RegistrationSettings()));
+    var command = new CreateUserCommand("rolnuevo", "rolnuevo@example.com", "SecPass123*");
+
+    var result = await handler.Handle(command, CancellationToken.None);
+
+    result.Success.Should().BeTrue();
+    Received.InOrder(() =>
+    {
+      mockDefaultRole.AssignDefaultRoleAsync(Arg.Is<User>(u => u.Email == "rolnuevo@example.com"), Arg.Any<CancellationToken>());
+      mockUnitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>());
+    });
+  }
+
+  [Theory(DisplayName = "Con aprobación obligatoria, el registro nace en pending_approval, también en la respuesta neutra")]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task Handle_WhenAdminApprovalRequired_UsesPendingApprovalStatus(bool emailExists)
+  {
+    var mockRepo = Substitute.For<ICreateUserRepository>();
+    var mockActivationEmailService = Substitute.For<IActivationEmailService>();
+    var mockPasswordHasher = Substitute.For<IPasswordHasher>();
+    User? created = null;
+    mockRepo.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(emailExists);
+    mockRepo.CreateUser(Arg.Do<User>(u => created = u)).Returns(c => c.Arg<User>());
+    mockPasswordHasher.HashPassword(Arg.Any<string>()).Returns("hashed");
+    mockActivationEmailService
+      .SendActivationEmailAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(OperationResult.Ok(true)));
+    var settings = Options.Create(new RegistrationSettings { RequireAdminApproval = true });
+
+    var handler = new CreateUserHandler(mockRepo, Substitute.For<IUserLogger>(), Substitute.For<IAutoDiscoveryIAMUnitOfWork>(), mockPasswordHasher, Substitute.For<IActivationService>(), mockActivationEmailService, Substitute.For<IDefaultRoleAssignmentService>(), settings);
+
+    var result = await handler.Handle(new CreateUserCommand("aprobacion", "aprobacion@example.com", "SecPass123*"), CancellationToken.None);
+
+    result.Success.Should().BeTrue();
+    result.Data!.Status.Should().Be(UserStatusCatalog.PendingApproval, "la respuesta neutra debe verse igual que un registro real");
+    if (!emailExists)
+    {
+      created!.Status.Should().Be(UserStatusCatalog.PendingApproval);
+      created.IsActive.Should().BeFalse();
+    }
+  }
+
+  [Fact(DisplayName = "Handle con email ya registrado no asigna ningún rol")]
+  public async Task Handle_EmailDuplicado_DoesNotAssignDefaultRole()
+  {
+    var mockRepo = Substitute.For<ICreateUserRepository>();
+    var mockDefaultRole = Substitute.For<IDefaultRoleAssignmentService>();
+    mockRepo.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+    var handler = new CreateUserHandler(mockRepo, Substitute.For<IUserLogger>(), Substitute.For<IAutoDiscoveryIAMUnitOfWork>(), Substitute.For<IPasswordHasher>(), Substitute.For<IActivationService>(), Substitute.For<IActivationEmailService>(), mockDefaultRole, Options.Create(new RegistrationSettings()));
+
+    await handler.Handle(new CreateUserCommand("dup", "dup@example.com", "SecPass123*"), CancellationToken.None);
+
+    await mockDefaultRole.DidNotReceive().AssignDefaultRoleAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
   }
 }

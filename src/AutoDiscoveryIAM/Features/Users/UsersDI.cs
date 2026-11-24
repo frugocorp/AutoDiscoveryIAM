@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUser;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUserByAdmin;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.Activation;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.CreateUserRoles;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Commands.DeleteMyAccount;
@@ -26,6 +27,7 @@ using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetPermission
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetRolesByPublicId;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetUserByPublicId;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Queries.GetUsers;
+using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.DefaultRole;
 using FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users.Services.UserQuery;
 
 namespace FrugoCorp.AspNetCore.AutoDiscoveryIAM.Features.Users;
@@ -39,6 +41,7 @@ public static class UsersDI
     services.AddPasswordManagementDI();
     services.AddTwoFactorDI();
     services.AddCreateUserDI();
+    services.AddCreateUserByAdminDI();
     services.AddCreateUserRolesDI();
     services.AddDeleteUserRolesByPublicIdDI();
     services.AddRestoreUserRolesByPublicIdDI();
@@ -59,6 +62,9 @@ public static class UsersDI
 
     // Servicios de consulta de usuarios
     services.AddScoped<IUserQueryService, UserQueryService>();
+
+    // Rol por defecto para todo usuario nuevo, sin importar el camino que lo crea
+    services.AddScoped<IDefaultRoleAssignmentService, DefaultRoleAssignmentService>();
 
     return services;
   }
